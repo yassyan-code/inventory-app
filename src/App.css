@@ -1,3 +1,10 @@
+/* ダークモードでも入力欄・セレクトは常に明るい背景+暗い文字にして視認性を確保する */
+input,
+select {
+  color: #1f2937;
+  background: white;
+}
+
 .app-loading {
   display: flex;
   align-items: center;
