@@ -1,0 +1,146 @@
+import { supabase } from './supabaseClient'
+
+// バーコードから商品＋在庫を1件取得（無ければ null）
+export async function findByBarcode(barcode) {
+  const { data: product, error } = await supabase
+    .from('products')
+    .select('id, barcode, name, category, stock_items(quantity)')
+    .eq('barcode', barcode)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!product) return null
+
+  return {
+    id: product.id,
+    barcode: product.barcode,
+    name: product.name,
+    category: product.category,
+    quantity: extractQuantity(product.stock_items),
+  }
+}
+
+// stock_items は product_id にunique制約があるため、Supabaseは埋め込み結果を
+// 配列ではなく単一オブジェクトで返す(環境によっては配列のこともあるため両対応)
+function extractQuantity(stockItems) {
+  if (Array.isArray(stockItems)) {
+    return stockItems[0]?.quantity ?? 0
+  }
+  return stockItems?.quantity ?? 0
+}
+
+// 新規商品を登録し、初期在庫数を設定する
+export async function createProduct(barcode, name, initialQuantity = 0, category = '') {
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .insert({ barcode, name, category: category || null })
+    .select()
+    .single()
+
+  if (productError) throw productError
+
+  const { error: stockError } = await supabase
+    .from('stock_items')
+    .insert({ product_id: product.id, quantity: initialQuantity })
+
+  if (stockError) throw stockError
+
+  if (initialQuantity !== 0) {
+    await recordMovement(product.id, initialQuantity, '初期登録')
+  }
+
+  return product
+}
+
+// 在庫数を増減させる（change は正=入庫 / 負=出庫）
+export async function adjustQuantity(productId, change, note = '') {
+  const { data: current, error: fetchError } = await supabase
+    .from('stock_items')
+    .select('quantity')
+    .eq('product_id', productId)
+    .single()
+
+  if (fetchError) throw fetchError
+
+  const newQuantity = current.quantity + change
+
+  const { error: updateError } = await supabase
+    .from('stock_items')
+    .update({ quantity: newQuantity })
+    .eq('product_id', productId)
+
+  if (updateError) throw updateError
+
+  await recordMovement(productId, change, note)
+
+  return newQuantity
+}
+
+async function recordMovement(productId, change, note) {
+  const { error } = await supabase
+    .from('stock_movements')
+    .insert({ product_id: productId, change, note })
+  if (error) throw error
+}
+
+// 在庫一覧を取得（商品名・バーコード・カテゴリで検索可能、カテゴリ絞り込み・並び替え可能）
+// sortOrder: 'newest'（新しい順） | 'oldest'（古い順） | 'name'（名前順・デフォルト）
+export async function listStock(searchText = '', sortOrder = 'name', category = '') {
+  let query = supabase
+    .from('products')
+    .select('id, barcode, name, category, created_at, stock_items(quantity)')
+
+  if (sortOrder === 'newest') {
+    query = query.order('created_at', { ascending: false })
+  } else if (sortOrder === 'oldest') {
+    query = query.order('created_at', { ascending: true })
+  } else {
+    query = query.order('name')
+  }
+
+  if (searchText) {
+    const escaped = searchText.replace(/[%_,]/g, (c) => `\\${c}`)
+    query = query.or(
+      `name.ilike.%${escaped}%,barcode.ilike.%${escaped}%,category.ilike.%${escaped}%`
+    )
+  }
+
+  if (category) {
+    query = query.eq('category', category)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    barcode: p.barcode,
+    name: p.name,
+    category: p.category,
+    createdAt: p.created_at,
+    quantity: extractQuantity(p.stock_items),
+  }))
+}
+
+// 商品のカテゴリを更新する（空文字は未設定=nullとして保存）
+export async function updateCategory(productId, category) {
+  const { error } = await supabase
+    .from('products')
+    .update({ category: category || null })
+    .eq('id', productId)
+
+  if (error) throw error
+}
+
+// 登録済みのカテゴリ一覧（絞り込みドロップダウン用、重複なし・昇順）
+export async function listCategories() {
+  const { data, error } = await supabase
+    .from('products')
+    .select('category')
+    .not('category', 'is', null)
+
+  if (error) throw error
+
+  const unique = [...new Set((data ?? []).map((d) => d.category).filter(Boolean))]
+  return unique.sort((a, b) => a.localeCompare(b, 'ja'))
+}
