@@ -47,7 +47,9 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>在庫管理アプリ</h1>
+        <h1>
+          在庫管理アプリ <span className="app-subtitle">for Team</span>
+        </h1>
         <button className="secondary" onClick={() => supabase.auth.signOut()}>
           ログアウト
         </button>
