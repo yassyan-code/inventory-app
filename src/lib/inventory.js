@@ -85,10 +85,15 @@ async function recordMovement(productId, change, note) {
 
 // 在庫一覧を取得（商品名・バーコード・カテゴリで検索可能、カテゴリ絞り込み・並び替え可能）
 // sortOrder: 'newest'（新しい順） | 'oldest'（古い順） | 'name'（名前順・デフォルト）
-export async function listStock(searchText = '', sortOrder = 'name', category = '') {
+// includeArchived: true の場合、非表示にした商品も含める
+export async function listStock(searchText = '', sortOrder = 'name', category = '', includeArchived = false) {
   let query = supabase
     .from('products')
-    .select('id, barcode, name, category, created_at, stock_items(quantity)')
+    .select('id, barcode, name, category, created_at, archived_at, stock_items(quantity)')
+
+  if (!includeArchived) {
+    query = query.is('archived_at', null)
+  }
 
   if (sortOrder === 'newest') {
     query = query.order('created_at', { ascending: false })
@@ -118,8 +123,29 @@ export async function listStock(searchText = '', sortOrder = 'name', category = 
     name: p.name,
     category: p.category,
     createdAt: p.created_at,
+    archivedAt: p.archived_at,
     quantity: extractQuantity(p.stock_items),
   }))
+}
+
+// 商品を非表示にする（データは削除せず残す。入出庫履歴も保持される）
+export async function archiveProduct(productId) {
+  const { error } = await supabase
+    .from('products')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', productId)
+
+  if (error) throw error
+}
+
+// 非表示にした商品を元に戻す
+export async function unarchiveProduct(productId) {
+  const { error } = await supabase
+    .from('products')
+    .update({ archived_at: null })
+    .eq('id', productId)
+
+  if (error) throw error
 }
 
 // 商品のカテゴリを更新する（空文字は未設定=nullとして保存）

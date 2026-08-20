@@ -7,12 +7,14 @@ create table if not exists products (
   barcode text not null unique,
   name text not null,
   category text,
+  archived_at timestamptz,
   created_by uuid references auth.users(id) default auth.uid(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists idx_products_category on products (category);
+create index if not exists idx_products_archived_at on products (archived_at);
 
 -- 在庫（商品ごとの現在数量）
 create table if not exists stock_items (

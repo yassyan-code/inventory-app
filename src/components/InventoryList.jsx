@@ -1,5 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import { listStock, listCategories, adjustQuantity, updateCategory } from '../lib/inventory'
+import {
+  listStock,
+  listCategories,
+  adjustQuantity,
+  updateCategory,
+  archiveProduct,
+  unarchiveProduct,
+} from '../lib/inventory'
+import { toCsv, downloadCsv } from '../lib/csv'
+
+const CSV_HEADERS = [
+  { key: 'name', label: '商品名' },
+  { key: 'category', label: 'カテゴリ' },
+  { key: 'barcode', label: 'バーコード' },
+  { key: 'createdAt', label: '登録日' },
+  { key: 'quantity', label: '数量' },
+  { key: 'status', label: '状態' },
+]
 
 const formatDate = (iso) => {
   if (!iso) return ''
@@ -16,13 +33,14 @@ export default function InventoryList({ refreshKey }) {
   const [categoryOptions, setCategoryOptions] = useState([])
   const [editingId, setEditingId] = useState(null)
   const [editValue, setEditValue] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const debounceRef = useRef(null)
 
-  const load = async (text, order, cat) => {
+  const load = async (text, order, cat, includeArchived) => {
     setLoading(true)
     setError('')
     try {
-      const data = await listStock(text, order, cat)
+      const data = await listStock(text, order, cat, includeArchived)
       setItems(data)
     } catch (err) {
       setError('取得エラー: ' + err.message)
@@ -32,22 +50,63 @@ export default function InventoryList({ refreshKey }) {
   }
 
   useEffect(() => {
-    load(search, sortOrder, category)
+    load(search, sortOrder, category, showArchived)
     listCategories().then(setCategoryOptions).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey, sortOrder, category])
+  }, [refreshKey, sortOrder, category, showArchived])
 
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    load(search, sortOrder, category)
+    load(search, sortOrder, category, showArchived)
   }
 
   const handleSearchChange = (e) => {
     const value = e.target.value
     setSearch(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => load(value, sortOrder, category), 300)
+    debounceRef.current = setTimeout(() => load(value, sortOrder, category, showArchived), 300)
+  }
+
+  const handleArchive = async (item) => {
+    if (!window.confirm(`「${item.name}」を非表示にしますか？（在庫データや履歴は残り、後で復元できます）`)) return
+    try {
+      await archiveProduct(item.id)
+      if (showArchived) {
+        setItems((prev) =>
+          prev.map((it) => (it.id === item.id ? { ...it, archivedAt: new Date().toISOString() } : it))
+        )
+      } else {
+        setItems((prev) => prev.filter((it) => it.id !== item.id))
+      }
+    } catch (err) {
+      setError('非表示エラー: ' + err.message)
+    }
+  }
+
+  const handleExportCsv = () => {
+    const rows = items.map((item) => ({
+      name: item.name,
+      category: item.category || '',
+      barcode: item.barcode,
+      createdAt: formatDate(item.createdAt),
+      quantity: item.quantity,
+      status: item.archivedAt ? '非表示' : '',
+    }))
+    const csvText = toCsv(CSV_HEADERS, rows)
+    const today = formatDate(new Date().toISOString()).replace(/\//g, '-')
+    downloadCsv(`inventory_${today}.csv`, csvText)
+  }
+
+  const handleUnarchive = async (item) => {
+    try {
+      await unarchiveProduct(item.id)
+      setItems((prev) =>
+        prev.map((it) => (it.id === item.id ? { ...it, archivedAt: null } : it))
+      )
+    } catch (err) {
+      setError('復元エラー: ' + err.message)
+    }
   }
 
   const handleAdjust = async (item, change) => {
@@ -137,6 +196,24 @@ export default function InventoryList({ refreshKey }) {
         ))}
       </datalist>
 
+      <div className="list-toolbar">
+        <label className="show-archived-toggle">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          非表示の商品も表示する
+        </label>
+        <button
+          className="secondary"
+          onClick={handleExportCsv}
+          disabled={items.length === 0}
+        >
+          CSVエクスポート
+        </button>
+      </div>
+
       {loading && <p>読み込み中...</p>}
       {error && <p className="message">{error}</p>}
 
@@ -152,12 +229,16 @@ export default function InventoryList({ refreshKey }) {
               <th>登録日</th>
               <th>数量</th>
               <th></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id}>
-                <td>{item.name}</td>
+              <tr key={item.id} className={item.archivedAt ? 'row--archived' : ''}>
+                <td>
+                  {item.name}
+                  {item.archivedAt && <span className="archived-badge">非表示</span>}
+                </td>
                 <td className="category-cell">
                   {editingId === item.id ? (
                     <input
@@ -186,6 +267,17 @@ export default function InventoryList({ refreshKey }) {
                   <button onClick={() => handleAdjust(item, -1)} disabled={item.quantity <= 0}>
                     −1
                   </button>
+                </td>
+                <td>
+                  {item.archivedAt ? (
+                    <button className="secondary" onClick={() => handleUnarchive(item)}>
+                      復元
+                    </button>
+                  ) : (
+                    <button className="secondary" onClick={() => handleArchive(item)}>
+                      非表示
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -275,7 +275,7 @@ td {
 }
 
 .category-edit-trigger {
-  background: none;
+  background-color: transparent;
   border: 1px dashed transparent;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
@@ -286,6 +286,35 @@ td {
 
 .category-edit-trigger:hover {
   border-color: #9ca3af;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.show-archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.row--archived {
+  opacity: 0.6;
+}
+
+.archived-badge {
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.7rem;
 }
 
 .category-edit-input {
