@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+const MAX_MESSAGE_LENGTH = 2000
+
 export default function ChatPanel() {
   const [messages, setMessages] = useState([]) // [{ role: 'user' | 'assistant', content: string }]
   const [input, setInput] = useState('')
@@ -10,6 +12,10 @@ export default function ChatPanel() {
     e.preventDefault()
     const text = input.trim()
     if (!text || loading) return
+    if (text.length > MAX_MESSAGE_LENGTH) {
+      setError(`メッセージは${MAX_MESSAGE_LENGTH}文字以内で入力してください（現在${text.length}文字）`)
+      return
+    }
 
     const nextMessages = [...messages, { role: 'user', content: text }]
     setMessages(nextMessages)
@@ -59,6 +65,7 @@ export default function ChatPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="メッセージを入力"
+          maxLength={MAX_MESSAGE_LENGTH}
           disabled={loading}
         />
         <button type="submit" disabled={loading || !input.trim()}>
