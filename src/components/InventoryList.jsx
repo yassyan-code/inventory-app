@@ -18,6 +18,8 @@ const CSV_HEADERS = [
   { key: 'status', label: '状態' },
 ]
 
+const MAX_CATEGORY_LENGTH = 50
+
 const formatDate = (iso) => {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('ja-JP')
@@ -34,6 +36,7 @@ export default function InventoryList({ refreshKey }) {
   const [editingId, setEditingId] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  const [adjustingId, setAdjustingId] = useState(null)
   const debounceRef = useRef(null)
 
   const load = async (text, order, cat, includeArchived) => {
@@ -110,6 +113,9 @@ export default function InventoryList({ refreshKey }) {
   }
 
   const handleAdjust = async (item, change) => {
+    if (adjustingId === item.id) return
+    if (change < 0 && item.quantity <= 0) return
+    setAdjustingId(item.id)
     try {
       const newQty = await adjustQuantity(item.id, change, change > 0 ? '入庫' : '出庫')
       setItems((prev) =>
@@ -117,6 +123,8 @@ export default function InventoryList({ refreshKey }) {
       )
     } catch (err) {
       setError('更新エラー: ' + err.message)
+    } finally {
+      setAdjustingId(null)
     }
   }
 
@@ -134,6 +142,10 @@ export default function InventoryList({ refreshKey }) {
     const newCategory = editValue.trim()
     setEditingId(null)
     if (newCategory === (item.category || '')) return
+    if (newCategory.length > MAX_CATEGORY_LENGTH) {
+      setError(`カテゴリは${MAX_CATEGORY_LENGTH}文字以内で入力してください`)
+      return
+    }
     try {
       await updateCategory(item.id, newCategory)
       setItems((prev) =>
@@ -245,6 +257,7 @@ export default function InventoryList({ refreshKey }) {
                       className="category-edit-input"
                       list="category-suggestions"
                       autoFocus
+                      maxLength={MAX_CATEGORY_LENGTH}
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={() => saveEdit(item)}
@@ -263,8 +276,13 @@ export default function InventoryList({ refreshKey }) {
                 <td className="barcode-cell">{formatDate(item.createdAt)}</td>
                 <td>{item.quantity}</td>
                 <td className="qty-buttons qty-buttons--inline">
-                  <button onClick={() => handleAdjust(item, 1)}>＋1</button>
-                  <button onClick={() => handleAdjust(item, -1)} disabled={item.quantity <= 0}>
+                  <button onClick={() => handleAdjust(item, 1)} disabled={adjustingId === item.id}>
+                    ＋1
+                  </button>
+                  <button
+                    onClick={() => handleAdjust(item, -1)}
+                    disabled={adjustingId === item.id || item.quantity <= 0}
+                  >
                     −1
                   </button>
                 </td>
