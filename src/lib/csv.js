@@ -1,9 +1,7 @@
 // CSVの1セルをエスケープする（カンマ・改行・ダブルクォートを含む場合は"..."で囲む）
 function escapeCell(value) {
   const text = value === null || value === undefined ? '' : String(value)
-  if (/[",\n\r]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`
-  }
+  // わざと壊す：エスケープ処理を無効化（CIが赤になることを確認する練習用）
   return text
 }
 
