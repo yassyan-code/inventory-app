@@ -8,6 +8,7 @@ create table if not exists products (
   name text not null,
   category text,
   archived_at timestamptz,
+  note text,
   created_by uuid references auth.users(id) default auth.uid(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
