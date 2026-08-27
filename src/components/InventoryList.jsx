@@ -25,7 +25,7 @@ const formatDate = (iso) => {
   return new Date(iso).toLocaleDateString('ja-JP')
 }
 
-export default function InventoryList({ refreshKey }) {
+export default function InventoryList({ refreshKey, isAdmin = false }) {
   const [items, setItems] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -266,10 +266,12 @@ export default function InventoryList({ refreshKey }) {
                         if (e.key === 'Escape') cancelEdit()
                       }}
                     />
-                  ) : (
+                  ) : isAdmin ? (
                     <button className="category-edit-trigger" onClick={() => startEdit(item)}>
                       {item.category || '－'}
                     </button>
+                  ) : (
+                    <span>{item.category || '－'}</span>
                   )}
                 </td>
                 <td className="barcode-cell">{item.barcode}</td>
@@ -287,7 +289,7 @@ export default function InventoryList({ refreshKey }) {
                   </button>
                 </td>
                 <td>
-                  {item.archivedAt ? (
+                  {!isAdmin ? null : item.archivedAt ? (
                     <button className="secondary" onClick={() => handleUnarchive(item)}>
                       復元
                     </button>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { supabase } from './lib/supabaseClient'
+import { getMyMembership } from './lib/inventory'
 import Auth from './components/Auth'
+import ResetPassword from './components/ResetPassword'
 import RegisterPanel from './components/RegisterPanel'
 import InventoryList from './components/InventoryList'
 import ChatPanel from './components/ChatPanel'
@@ -12,9 +14,16 @@ const TABS = {
   CHAT: 'chat',
 }
 
+// 再設定リンクで開かれたか（URL ハッシュに recovery トークンが載る）を初期判定する
+function hasRecoveryInUrl() {
+  return /type=recovery/.test(window.location.hash)
+}
+
 function App() {
   const [session, setSession] = useState(null)
   const [checkingSession, setCheckingSession] = useState(true)
+  const [recovering, setRecovering] = useState(hasRecoveryInUrl())
+  const [membership, setMembership] = useState(null)
   const [tab, setTab] = useState(TABS.SCAN)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -24,15 +33,58 @@ function App() {
       setCheckingSession(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // 再設定リンク経由。専用画面を出し、通常画面には入れない
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecovering(true)
+      }
+      if (event === 'SIGNED_OUT') {
+        setMembership(null)
+        setRecovering(false)
+      }
       setSession(newSession)
     })
 
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  // ログイン後に所属チーム・ロールを取得する
+  useEffect(() => {
+    if (!session || recovering) {
+      setMembership(null)
+      return
+    }
+    let cancelled = false
+    getMyMembership()
+      .then((m) => {
+        if (!cancelled) setMembership(m)
+      })
+      .catch((err) => {
+        console.warn('[membership] 取得に失敗:', err.message)
+        if (!cancelled) setMembership(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [session, recovering])
+
+  const finishRecovery = () => {
+    // URL からトークンを除去してログイン画面へ
+    window.history.replaceState(null, '', window.location.pathname)
+    setRecovering(false)
+  }
+
   if (checkingSession) {
     return <div className="app-loading">読み込み中...</div>
+  }
+
+  if (recovering) {
+    return (
+      <div className="app-shell app-shell--centered">
+        <h1>在庫管理アプリ</h1>
+        <ResetPassword onDone={finishRecovery} />
+      </div>
+    )
   }
 
   if (!session) {
@@ -44,12 +96,24 @@ function App() {
     )
   }
 
+  const isAdmin = membership?.isAdmin ?? false
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>
-          📦 在庫管理アプリ <span className="app-subtitle">for Team</span>
-        </h1>
+        <div className="app-header__title">
+          <h1>
+            📦 在庫管理アプリ <span className="app-subtitle">for Team</span>
+          </h1>
+          {membership && (
+            <p className="app-team-line">
+              <span className="app-team-name">{membership.teamName}</span>
+              <span className={isAdmin ? 'role-badge role-badge--admin' : 'role-badge'}>
+                {isAdmin ? '管理者' : '一般ユーザー'}
+              </span>
+            </p>
+          )}
+        </div>
         <button className="secondary" onClick={() => supabase.auth.signOut()}>
           ログアウト
         </button>
@@ -78,9 +142,9 @@ function App() {
 
       <main>
         {tab === TABS.SCAN && (
-          <RegisterPanel onChanged={() => setRefreshKey((k) => k + 1)} />
+          <RegisterPanel isAdmin={isAdmin} onChanged={() => setRefreshKey((k) => k + 1)} />
         )}
-        {tab === TABS.LIST && <InventoryList refreshKey={refreshKey} />}
+        {tab === TABS.LIST && <InventoryList isAdmin={isAdmin} refreshKey={refreshKey} />}
         {tab === TABS.CHAT && <ChatPanel />}
       </main>
 
