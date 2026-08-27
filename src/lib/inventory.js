@@ -1,5 +1,24 @@
 import { supabase } from './supabaseClient'
 
+// ログイン中ユーザーが所属するチームIDを取得する
+// (現状は1ユーザー1チームを前提。新規サインアップ時にトリガーが自動でチームを作る)
+export async function getCurrentTeamId() {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('未ログインです')
+
+  const { data, error } = await supabase
+    .from('team_members')
+    .select('team_id')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) throw new Error('所属チームが見つかりません')
+  return data.team_id
+}
+
 // バーコードから商品＋在庫を1件取得（無ければ null）
 export async function findByBarcode(barcode) {
   const { data: product, error } = await supabase
@@ -31,9 +50,11 @@ function extractQuantity(stockItems) {
 
 // 新規商品を登録し、初期在庫数を設定する
 export async function createProduct(barcode, name, initialQuantity = 0, category = '') {
+  const teamId = await getCurrentTeamId()
+
   const { data: product, error: productError } = await supabase
     .from('products')
-    .insert({ barcode, name, category: category || null })
+    .insert({ barcode, name, category: category || null, team_id: teamId })
     .select()
     .single()
 
@@ -41,12 +62,12 @@ export async function createProduct(barcode, name, initialQuantity = 0, category
 
   const { error: stockError } = await supabase
     .from('stock_items')
-    .insert({ product_id: product.id, quantity: initialQuantity })
+    .insert({ product_id: product.id, quantity: initialQuantity, team_id: teamId })
 
   if (stockError) throw stockError
 
   if (initialQuantity !== 0) {
-    await recordMovement(product.id, initialQuantity, '初期登録')
+    await recordMovement(product.id, initialQuantity, '初期登録', teamId)
   }
 
   return product
@@ -71,15 +92,16 @@ export async function adjustQuantity(productId, change, note = '') {
 
   if (updateError) throw updateError
 
-  await recordMovement(productId, change, note)
+  const teamId = await getCurrentTeamId()
+  await recordMovement(productId, change, note, teamId)
 
   return newQuantity
 }
 
-async function recordMovement(productId, change, note) {
+async function recordMovement(productId, change, note, teamId) {
   const { error } = await supabase
     .from('stock_movements')
-    .insert({ product_id: productId, change, note })
+    .insert({ product_id: productId, change, note, team_id: teamId })
   if (error) throw error
 }
 
