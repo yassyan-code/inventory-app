@@ -83,6 +83,8 @@ function App() {
         {tab === TABS.LIST && <InventoryList refreshKey={refreshKey} />}
         {tab === TABS.CHAT && <ChatPanel />}
       </main>
+
+      <footer className="app-footer">CI/CD動作確認 v1</footer>
     </div>
   )
 }
