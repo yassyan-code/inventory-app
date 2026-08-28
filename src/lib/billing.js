@@ -32,6 +32,11 @@ export async function openBillingPortal() {
   window.location.href = url
 }
 
+// 決済完了後、Stripe側の最新状態を取得して teams に反映する
+export async function syncCheckout() {
+  return postWithAuth('/api/checkout-sync') // { plan, plan_status, synced }
+}
+
 // 無料プランの商品上限
 export const FREE_PLAN_PRODUCT_LIMIT = 50
 

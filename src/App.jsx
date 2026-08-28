@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { supabase } from './lib/supabaseClient'
 import { getMyMembership } from './lib/inventory'
+import { syncCheckout } from './lib/billing'
 import Auth from './components/Auth'
 import ResetPassword from './components/ResetPassword'
 import RegisterPanel from './components/RegisterPanel'
@@ -79,21 +80,27 @@ function App() {
     window.history.replaceState(null, '', window.location.pathname)
     if (checkoutNotice !== 'success') return
 
-    let tries = 0
-    const timer = setInterval(async () => {
-      tries += 1
+    let cancelled = false
+    ;(async () => {
+      // まず Stripe 側の最新状態を teams に反映（Webhook 待ちに依存しない）
+      try {
+        await syncCheckout()
+      } catch (err) {
+        console.warn('[checkout-sync] 失敗:', err.message)
+      }
+      if (cancelled) return
       try {
         const m = await getMyMembership()
+        if (cancelled) return
         setMembership(m)
-        if (m.isPro || tries >= 5) {
-          clearInterval(timer)
-          if (m.isPro) setCheckoutNotice('done')
-        }
+        setCheckoutNotice(m.isPro ? 'done' : 'success')
       } catch {
-        if (tries >= 5) clearInterval(timer)
+        /* 次回のメンバーシップ取得で反映される */
       }
-    }, 2000)
-    return () => clearInterval(timer)
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [checkoutNotice])
 
   const finishRecovery = () => {

@@ -52,6 +52,9 @@ export default async function handler(req, res) {
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancel`,
       allow_promotion_codes: true,
+      // このアカウントは Managed Payments が既定ON。商品ごとの tax_code 設定を
+      // 要求されるため、シンプルなサブスク課金では明示的に無効化する。
+      managed_payments: { enabled: false },
     })
 
     res.status(200).json({ url: session.url })

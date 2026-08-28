@@ -1,5 +1,9 @@
 // Stripe からのイベント通知を受け取り、teams のプラン状態を更新する。
-// 署名検証のため生のリクエストボディが必要なので bodyParser を無効化する。
+//
+// 署名検証には生のリクエストボディが必要なので bodyParser を無効化する。
+// (注) ローカルの `vercel dev` はこの設定を無視してボディを先にパースしてしまうため、
+//      ローカルでは署名検証が通らない。デプロイ環境(本番 Vercel)では正しく動く。
+//      ローカルの即時反映は api/checkout-sync.js（戻り画面から呼ぶ）で担保している。
 //
 // 登録が必要なイベント(Stripe ダッシュボード > Developers > Webhooks):
 //   checkout.session.completed
@@ -18,7 +22,6 @@ async function readRawBody(req) {
   return Buffer.concat(chunks)
 }
 
-// サブスクの status からアプリ内プランを決める
 function planFromStatus(status) {
   return status === 'active' || status === 'trialing' ? 'pro' : 'free'
 }
@@ -51,9 +54,7 @@ export default async function handler(req, res) {
       case 'checkout.session.completed': {
         const s = event.data.object
         const teamId = s.client_reference_id || s.metadata?.team_id
-        const sub = s.subscription
-          ? await stripe.subscriptions.retrieve(s.subscription)
-          : null
+        const sub = s.subscription ? await stripe.subscriptions.retrieve(s.subscription) : null
         await updateTeam(
           { id: teamId },
           {
@@ -72,16 +73,14 @@ export default async function handler(req, res) {
       case 'customer.subscription.updated': {
         const sub = event.data.object
         const teamId = sub.metadata?.team_id
-        const patch = {
+        await updateTeam(teamId ? { id: teamId } : { stripe_customer_id: sub.customer }, {
           plan: planFromStatus(sub.status),
           plan_status: sub.status,
           stripe_subscription_id: sub.id,
           current_period_end: sub.current_period_end
             ? new Date(sub.current_period_end * 1000).toISOString()
             : null,
-        }
-        // metadata が無い古いサブスクにも対応できるよう customer 一致でも引く
-        await updateTeam(teamId ? { id: teamId } : { stripe_customer_id: sub.customer }, patch)
+        })
         break
       }
 
@@ -98,7 +97,6 @@ export default async function handler(req, res) {
       }
 
       default:
-        // 未対応イベントは 200 で受け流す(Stripe の再送を止める)
         break
     }
   } catch (err) {
