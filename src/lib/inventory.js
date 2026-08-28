@@ -19,6 +19,33 @@ export async function getCurrentTeamId() {
   return data.team_id
 }
 
+// ログイン中ユーザーの所属情報（チームID・チーム名・ロール）をまとめて取得する。
+// ヘッダー表示と、ロールによる画面の出し分けに使う。
+export async function getMyMembership() {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError) throw userError
+  if (!user) throw new Error('未ログインです')
+
+  const { data, error } = await supabase
+    .from('team_members')
+    .select('team_id, role, teams(name)')
+    .eq('user_id', user.id)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) throw new Error('所属チームが見つかりません')
+
+  return {
+    teamId: data.team_id,
+    teamName: data.teams?.name ?? 'マイチーム',
+    // owner を管理者、それ以外を一般ユーザー扱いにする
+    role: data.role === 'owner' ? 'owner' : 'member',
+    isAdmin: data.role === 'owner',
+    email: user.email,
+  }
+}
+
 // バーコードから商品＋在庫を1件取得（無ければ null）
 export async function findByBarcode(barcode) {
   const { data: product, error } = await supabase

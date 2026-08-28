@@ -14,7 +14,7 @@ const MAX_CATEGORY_LENGTH = 50
 const MAX_BARCODE_LENGTH = 50
 const MAX_QUANTITY = 999999
 
-export default function RegisterPanel({ onChanged }) {
+export default function RegisterPanel({ onChanged, isAdmin = false }) {
   const [mode, setMode] = useState(MODES.CAMERA)
   const [status, setStatus] = useState('idle') // idle | loading | existing | new
   const [barcode, setBarcode] = useState('')
@@ -204,7 +204,17 @@ export default function RegisterPanel({ onChanged }) {
         </div>
       )}
 
-      {status === 'new' && (
+      {status === 'new' && !isAdmin && (
+        <div className="scan-result">
+          <p className="scan-result__barcode">バーコード: {barcode}</p>
+          <p>この商品はまだ登録されていません。新規登録は管理者のみ可能です。管理者に依頼してください。</p>
+          <button className="secondary" onClick={resetForm}>
+            戻る
+          </button>
+        </div>
+      )}
+
+      {status === 'new' && isAdmin && (
         <form className="scan-result" onSubmit={handleRegisterNew}>
           <p className="scan-result__barcode">バーコード: {barcode}</p>
           <p>新しい商品です。商品名と数量を入力してください。</p>
