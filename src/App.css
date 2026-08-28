@@ -258,6 +258,45 @@ button.link {
   color: #1d4ed8;
 }
 
+.plan-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.plan-badge--pro {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.plan-controls__error {
+  color: #dc2626;
+  font-size: 0.7rem;
+}
+
+.checkout-banner {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.checkout-banner--success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;

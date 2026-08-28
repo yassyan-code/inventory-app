@@ -28,7 +28,7 @@ export async function getMyMembership() {
 
   const { data, error } = await supabase
     .from('team_members')
-    .select('team_id, role, teams(name)')
+    .select('team_id, role, teams(name, plan, plan_status)')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
@@ -42,6 +42,9 @@ export async function getMyMembership() {
     // owner を管理者、それ以外を一般ユーザー扱いにする
     role: data.role === 'owner' ? 'owner' : 'member',
     isAdmin: data.role === 'owner',
+    plan: data.teams?.plan ?? 'free',
+    planStatus: data.teams?.plan_status ?? null,
+    isPro: (data.teams?.plan ?? 'free') === 'pro',
     email: user.email,
   }
 }

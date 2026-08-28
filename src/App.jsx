@@ -7,6 +7,7 @@ import ResetPassword from './components/ResetPassword'
 import RegisterPanel from './components/RegisterPanel'
 import InventoryList from './components/InventoryList'
 import ChatPanel from './components/ChatPanel'
+import PlanControls from './components/PlanControls'
 
 const TABS = {
   SCAN: 'scan',
@@ -26,6 +27,9 @@ function App() {
   const [membership, setMembership] = useState(null)
   const [tab, setTab] = useState(TABS.SCAN)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [checkoutNotice, setCheckoutNotice] = useState(() =>
+    new URLSearchParams(window.location.search).get('checkout')
+  )
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -67,6 +71,30 @@ function App() {
       cancelled = true
     }
   }, [session, recovering])
+
+  // Stripe Checkout から戻ってきたときの処理。
+  // 成功時は Webhook 反映に少しラグがあるので、Pro になるまで数回ポーリングする。
+  useEffect(() => {
+    if (!checkoutNotice) return
+    window.history.replaceState(null, '', window.location.pathname)
+    if (checkoutNotice !== 'success') return
+
+    let tries = 0
+    const timer = setInterval(async () => {
+      tries += 1
+      try {
+        const m = await getMyMembership()
+        setMembership(m)
+        if (m.isPro || tries >= 5) {
+          clearInterval(timer)
+          if (m.isPro) setCheckoutNotice('done')
+        }
+      } catch {
+        if (tries >= 5) clearInterval(timer)
+      }
+    }, 2000)
+    return () => clearInterval(timer)
+  }, [checkoutNotice])
 
   const finishRecovery = () => {
     // URL からトークンを除去してログイン画面へ
@@ -111,6 +139,7 @@ function App() {
               <span className={isAdmin ? 'role-badge role-badge--admin' : 'role-badge'}>
                 {isAdmin ? '管理者' : '一般ユーザー'}
               </span>
+              <PlanControls membership={membership} />
             </p>
           )}
         </div>
@@ -118,6 +147,18 @@ function App() {
           ログアウト
         </button>
       </header>
+
+      {checkoutNotice === 'done' && (
+        <div className="checkout-banner checkout-banner--success">
+          🎉 Proプランへのアップグレードが完了しました。ありがとうございます！
+        </div>
+      )}
+      {checkoutNotice === 'success' && (
+        <div className="checkout-banner">決済を確認しています... 少しお待ちください。</div>
+      )}
+      {checkoutNotice === 'cancel' && (
+        <div className="checkout-banner">アップグレードはキャンセルされました。</div>
+      )}
 
       <nav className="tabs">
         <button
