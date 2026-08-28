@@ -86,6 +86,60 @@ stripe listen --forward-to localhost:3000/api/stripe-webhook
 
 `supabase/008_add_billing.sql` を ① staging（`rhowcziknvabdranlhvf`）→ ② production（`noygjyxinkriupwequvt`）の順で SQL Editor で実行。
 
-## 次回（第19回）
+## 継続課金の運用（第19回）
 
-継続課金の運用：請求失敗（`invoice.payment_failed`）・解約・復活を Webhook で正しく回す。`plan_status` の `past_due` ハンドリング、猶予期間など。
+### 状態モデル
+
+`teams.plan_status` に Stripe の `subscription.status` をそのまま入れ、`teams.plan`（`free`/`pro`）は「機能が使えるか」の判定用に落とし込む。
+
+| plan_status | 意味 | teams.plan | アプリの挙動 |
+|---|---|---|---|
+| `active` / `trialing` | 正常 | `pro` | Pro 機能フル |
+| `past_due` | 支払い失敗・**猶予中**（Stripe が自動リトライ） | `pro` | Pro 機能は使える＋赤い警告バナー |
+| `unpaid` / `canceled` | 停止 | `free` | 無料プラン扱い（商品50件上限が再適用） |
+
+`cancel_at_period_end = true` … 期末解約が予約された状態。期末までは `active` のまま Pro、期末に `customer.subscription.deleted` が飛んで `free` に落ちる。
+
+判定ロジックは `api/_lib/billing-state.js`（`planFromStatus` / `patchFromSubscription`）に集約。フロントは `getMyMembership()` が返す `isPro` / `pastDue` / `scheduledCancel` を見る。
+
+### Webhook が処理するイベント
+
+| イベント | 処理 |
+|---|---|
+| `checkout.session.completed` | 初回 Pro 化（保険。通常は `checkout-sync` が先） |
+| `customer.subscription.created` / `updated` | `patchFromSubscription` で status・`cancel_at_period_end`・期末日を反映 |
+| `customer.subscription.deleted` | `free` / `canceled` に停止、`stripe_subscription_id` クリア |
+| `invoice.payment_succeeded` / `invoice.paid` | `active` に復帰 |
+| `invoice.payment_failed` | `past_due`（猶予）。Pro は維持 |
+
+### 解約フローとデータの扱い
+
+- 解約は Stripe カスタマーポータル（「プラン管理」ボタン）から。既定は**期末解約**。
+- 期末までは Pro のまま。ヘッダーに「解約予定」バッジ＋「◯月◯日まで利用できます」バナー。
+- 期末に `subscription.deleted` → `free` へ。**データは削除しない**。無料枠（50件）を超える商品があっても既存分は閲覧・編集・在庫増減とも可能で、`products` への**新規 insert だけ**トリガーで拒否される。
+
+### ローカルで Webhook を試す
+
+`vercel dev` は `bodyParser: false` を無視して署名検証が通らない。ローカル検証時のみ `.env` に
+
+```
+STRIPE_WEBHOOK_SKIP_VERIFY=1
+```
+
+を置くと署名検証をスキップし、`req.body`（パース済み）をそのままイベントとして扱う。**本番には絶対に設定しない。**
+
+```
+# ターミナル1: ローカルサーバー
+npx vercel dev --listen 3000
+# ターミナル2: Stripe→ローカルへ転送
+stripe listen --api-key sk_test_... --forward-to localhost:3000/api/stripe-webhook
+# ターミナル3: イベントを発火
+stripe trigger invoice.payment_failed --api-key sk_test_...
+stripe trigger customer.subscription.deleted --api-key sk_test_...
+```
+
+本番では `STRIPE_WEBHOOK_SKIP_VERIFY` を設定せず、Stripe ダッシュボードで登録した Webhook エンドポイントの署名シークレット（`whsec_...`）を `STRIPE_WEBHOOK_SECRET` に入れる。
+
+## マイグレーション適用順（第19回分）
+
+`supabase/009_billing_lifecycle.sql`（`teams.cancel_at_period_end` 追加）を ① staging → ② production の順で実行。

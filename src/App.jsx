@@ -167,6 +167,22 @@ function App() {
         <div className="checkout-banner">アップグレードはキャンセルされました。</div>
       )}
 
+      {membership?.pastDue && (
+        <div className="checkout-banner checkout-banner--alert">
+          お支払いを確認できませんでした。カードの有効期限などをご確認ください。
+          {membership.isAdmin && 'ヘッダーの「プラン管理」から更新できます。'}
+          このまま解決しないとPro機能は停止されます。
+        </div>
+      )}
+      {membership?.scheduledCancel && !membership.pastDue && (
+        <div className="checkout-banner">
+          解約手続きが完了しています。
+          {membership.currentPeriodEnd &&
+            `${new Date(membership.currentPeriodEnd).toLocaleDateString('ja-JP')}まで`}
+          Proプランをご利用いただけます。それ以降は無料プランに切り替わります（データは保持されます）。
+        </div>
+      )}
+
       <nav className="tabs">
         <button
           className={tab === TABS.SCAN ? 'active' : ''}

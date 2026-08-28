@@ -278,6 +278,11 @@ button.link {
   color: #92400e;
 }
 
+.plan-badge--alert {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .plan-controls__error {
   color: #dc2626;
   font-size: 0.7rem;
@@ -295,6 +300,11 @@ button.link {
 .checkout-banner--success {
   background: #dcfce7;
   color: #15803d;
+}
+
+.checkout-banner--alert {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .auth-form {

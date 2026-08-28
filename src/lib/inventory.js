@@ -28,7 +28,7 @@ export async function getMyMembership() {
 
   const { data, error } = await supabase
     .from('team_members')
-    .select('team_id, role, teams(name, plan, plan_status)')
+    .select('team_id, role, teams(name, plan, plan_status, cancel_at_period_end, current_period_end)')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
@@ -36,15 +36,26 @@ export async function getMyMembership() {
   if (error) throw error
   if (!data) throw new Error('所属チームが見つかりません')
 
+  const t = data.teams ?? {}
+  const plan = t.plan ?? 'free'
+  const planStatus = t.plan_status ?? null
+
   return {
     teamId: data.team_id,
-    teamName: data.teams?.name ?? 'マイチーム',
+    teamName: t.name ?? 'マイチーム',
     // owner を管理者、それ以外を一般ユーザー扱いにする
     role: data.role === 'owner' ? 'owner' : 'member',
     isAdmin: data.role === 'owner',
-    plan: data.teams?.plan ?? 'free',
-    planStatus: data.teams?.plan_status ?? null,
-    isPro: (data.teams?.plan ?? 'free') === 'pro',
+    plan,
+    planStatus,
+    cancelAtPeriodEnd: !!t.cancel_at_period_end,
+    currentPeriodEnd: t.current_period_end ?? null,
+    // Pro 機能が使えるか（past_due は猶予中なので使わせる）
+    isPro: plan === 'pro' && ['active', 'trialing', 'past_due'].includes(planStatus),
+    // 支払い失敗の猶予中
+    pastDue: planStatus === 'past_due',
+    // 期末解約が予約されている
+    scheduledCancel: plan === 'pro' && !!t.cancel_at_period_end,
     email: user.email,
   }
 }

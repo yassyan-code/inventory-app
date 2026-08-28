@@ -4,10 +4,7 @@
 // (Stripe 推奨の verify-on-return パターン。Webhook は更新/解約の非同期経路として併用)
 
 import { stripe, serviceClient, getOwnerTeam } from './_lib/clients.js'
-
-function planFromStatus(status) {
-  return status === 'active' || status === 'trialing' ? 'pro' : 'free'
-}
+import { patchFromSubscription } from './_lib/billing-state.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -40,18 +37,16 @@ export default async function handler(req, res) {
       return
     }
 
-    const patch = {
-      plan: planFromStatus(sub.status),
-      plan_status: sub.status,
-      stripe_subscription_id: sub.id,
-      current_period_end: sub.current_period_end
-        ? new Date(sub.current_period_end * 1000).toISOString()
-        : null,
-    }
+    const patch = patchFromSubscription(sub)
     const { error } = await serviceClient().from('teams').update(patch).eq('id', teamId)
     if (error) throw error
 
-    res.status(200).json({ plan: patch.plan, plan_status: patch.plan_status, synced: true })
+    res.status(200).json({
+      plan: patch.plan,
+      plan_status: patch.plan_status,
+      cancel_at_period_end: patch.cancel_at_period_end,
+      synced: true,
+    })
   } catch (err) {
     console.error('[checkout-sync] error:', err.message)
     res.status(500).json({ error: 'sync failed' })

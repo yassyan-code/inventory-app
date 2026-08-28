@@ -1,16 +1,19 @@
 // Stripe からのイベント通知を受け取り、teams のプラン状態を更新する。
 //
-// 署名検証には生のリクエストボディが必要なので bodyParser を無効化する。
-// (注) ローカルの `vercel dev` はこの設定を無視してボディを先にパースしてしまうため、
-//      ローカルでは署名検証が通らない。デプロイ環境(本番 Vercel)では正しく動く。
-//      ローカルの即時反映は api/checkout-sync.js（戻り画面から呼ぶ）で担保している。
+// 継続課金の状態遷移をここで一元管理する:
+//   invoice.paid / invoice.payment_succeeded  → active に復帰
+//   invoice.payment_failed                    → past_due（猶予）
+//   customer.subscription.updated             → status をそのまま反映（解約予約も）
+//   customer.subscription.deleted             → free に停止
+//   checkout.session.completed                → 初回の Pro 化（保険。通常は checkout-sync が先に効く）
 //
-// 登録が必要なイベント(Stripe ダッシュボード > Developers > Webhooks):
-//   checkout.session.completed
-//   customer.subscription.updated
-//   customer.subscription.deleted
+// 署名検証には生ボディが必要なので bodyParser を無効化する。
+// (注) ローカルの `vercel dev` はこの設定を無視するため署名検証が通らない。
+//      ローカルで Webhook を試すときだけ STRIPE_WEBHOOK_SKIP_VERIFY=1 を .env に置くと
+//      署名検証をスキップして req.body をそのままイベントとして扱う（本番では絶対に設定しない）。
 
 import { stripe, serviceClient } from './_lib/clients.js'
+import { patchFromSubscription } from './_lib/billing-state.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -22,14 +25,25 @@ async function readRawBody(req) {
   return Buffer.concat(chunks)
 }
 
-function planFromStatus(status) {
-  return status === 'active' || status === 'trialing' ? 'pro' : 'free'
+async function updateTeam(match, patch) {
+  const { error } = await serviceClient().from('teams').update(patch).match(match)
+  if (error) console.error('[webhook] teams update error:', error.message)
 }
 
-async function updateTeam(match, patch) {
-  const db = serviceClient()
-  const { error } = await db.from('teams').update(patch).match(match)
-  if (error) console.error('[webhook] teams update error:', error.message)
+// invoice から顧客/サブスクを引いて teams を更新する
+async function syncFromSubscriptionId(subscriptionId, customerId, fallbackPatch) {
+  if (subscriptionId) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(subscriptionId)
+      await updateTeam({ stripe_customer_id: sub.customer }, patchFromSubscription(sub))
+      return
+    } catch (err) {
+      console.error('[webhook] subscription retrieve failed:', err.message)
+    }
+  }
+  if (customerId && fallbackPatch) {
+    await updateTeam({ stripe_customer_id: customerId }, fallbackPatch)
+  }
 }
 
 export default async function handler(req, res) {
@@ -38,15 +52,24 @@ export default async function handler(req, res) {
     return
   }
 
-  const sig = req.headers['stripe-signature']
   let event
-  try {
-    const raw = await readRawBody(req)
-    event = stripe.webhooks.constructEvent(raw, sig, process.env.STRIPE_WEBHOOK_SECRET)
-  } catch (err) {
-    console.error('[webhook] signature verification failed:', err.message)
-    res.status(400).json({ error: `invalid signature: ${err.message}` })
-    return
+  if (process.env.STRIPE_WEBHOOK_SKIP_VERIFY === '1') {
+    // ローカル専用: 署名検証をスキップ。vercel dev は req.body を既にパース済み。
+    event = req.body
+    console.warn('[webhook] signature verification SKIPPED (dev mode)')
+  } else {
+    try {
+      const raw = await readRawBody(req)
+      event = stripe.webhooks.constructEvent(
+        raw,
+        req.headers['stripe-signature'],
+        process.env.STRIPE_WEBHOOK_SECRET
+      )
+    } catch (err) {
+      console.error('[webhook] signature verification failed:', err.message)
+      res.status(400).json({ error: `invalid signature: ${err.message}` })
+      return
+    }
   }
 
   try {
@@ -58,40 +81,56 @@ export default async function handler(req, res) {
         await updateTeam(
           { id: teamId },
           {
-            plan: 'pro',
-            plan_status: sub?.status || 'active',
             stripe_customer_id: s.customer,
-            stripe_subscription_id: s.subscription || null,
-            current_period_end: sub?.current_period_end
-              ? new Date(sub.current_period_end * 1000).toISOString()
-              : null,
+            ...(sub
+              ? patchFromSubscription(sub)
+              : { plan: 'pro', plan_status: 'active', stripe_subscription_id: s.subscription || null }),
           }
         )
         break
       }
 
-      case 'customer.subscription.updated': {
+      case 'customer.subscription.updated':
+      case 'customer.subscription.created': {
         const sub = event.data.object
-        const teamId = sub.metadata?.team_id
-        await updateTeam(teamId ? { id: teamId } : { stripe_customer_id: sub.customer }, {
-          plan: planFromStatus(sub.status),
-          plan_status: sub.status,
-          stripe_subscription_id: sub.id,
-          current_period_end: sub.current_period_end
-            ? new Date(sub.current_period_end * 1000).toISOString()
-            : null,
-        })
+        const match = sub.metadata?.team_id
+          ? { id: sub.metadata.team_id }
+          : { stripe_customer_id: sub.customer }
+        await updateTeam(match, patchFromSubscription(sub))
         break
       }
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object
-        const teamId = sub.metadata?.team_id
-        await updateTeam(teamId ? { id: teamId } : { stripe_customer_id: sub.customer }, {
+        const match = sub.metadata?.team_id
+          ? { id: sub.metadata.team_id }
+          : { stripe_customer_id: sub.customer }
+        await updateTeam(match, {
           plan: 'free',
           plan_status: 'canceled',
           stripe_subscription_id: null,
+          cancel_at_period_end: false,
           current_period_end: null,
+        })
+        break
+      }
+
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded': {
+        const inv = event.data.object
+        await syncFromSubscriptionId(inv.subscription, inv.customer, {
+          plan: 'pro',
+          plan_status: 'active',
+        })
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const inv = event.data.object
+        // Stripe 側はこの後も自動リトライ。猶予として past_due にするが Pro は維持。
+        await syncFromSubscriptionId(inv.subscription, inv.customer, {
+          plan: 'pro',
+          plan_status: 'past_due',
         })
         break
       }

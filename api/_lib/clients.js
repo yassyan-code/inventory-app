@@ -36,7 +36,9 @@ export async function getOwnerTeam(req) {
 
   const { data: membership, error: mErr } = await anon
     .from('team_members')
-    .select('team_id, role, teams(id, name, plan, plan_status, stripe_customer_id, stripe_subscription_id)')
+    .select(
+      'team_id, role, teams(id, name, plan, plan_status, cancel_at_period_end, current_period_end, stripe_customer_id, stripe_subscription_id)'
+    )
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()

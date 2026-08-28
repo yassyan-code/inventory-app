@@ -11,7 +11,9 @@ export default function PlanControls({ membership }) {
 
   if (!membership) return null
 
-  const { isPro, isAdmin, planStatus } = membership
+  const { isPro, isAdmin, pastDue, scheduledCancel } = membership
+
+  const statusLabel = pastDue ? '支払い確認中' : scheduledCancel ? '解約予定' : null
 
   const handle = async (fn) => {
     setBusy(true)
@@ -28,8 +30,12 @@ export default function PlanControls({ membership }) {
     <span className="plan-controls">
       <span className={isPro ? 'plan-badge plan-badge--pro' : 'plan-badge'}>
         {isPro ? 'Pro' : '無料プラン'}
-        {isPro && planStatus && planStatus !== 'active' && `（${planStatus}）`}
       </span>
+      {statusLabel && (
+        <span className={pastDue ? 'plan-badge plan-badge--alert' : 'plan-badge'}>
+          {statusLabel}
+        </span>
+      )}
 
       {isAdmin && !isPro && (
         <button className="link" onClick={() => handle(startCheckout)} disabled={busy}>
