@@ -143,3 +143,18 @@ stripe trigger customer.subscription.deleted --api-key sk_test_...
 ## マイグレーション適用順（第19回分）
 
 `supabase/009_billing_lifecycle.sql`（`teams.cancel_at_period_end` 追加）を ① staging → ② production の順で実行。
+
+## プラン制限とメータリング（第20回）
+
+| 制限 | 無料 | Pro | 強制箇所 |
+|---|---|---|---|
+| 商品登録 | 50件まで | 無制限 | DBトリガー `enforce_free_plan_product_limit`（第18回） |
+| AIチャット | **月20回まで** | 無制限 | RPC `use_ai_chat_quota`（`api/chat.js` から呼ぶ） |
+| CSVエクスポート | **不可（機能ゲート）** | 可 | フロント（`InventoryList` が `isPro` を見る） |
+
+- **メータリング**: `usage_counters(team_id, metric, period 'YYYY-MM', count)`。`use_ai_chat_quota` が「現在値の確認＋加算」を1トランザクションで行い `{allowed,count,limit,plan}` を返す。上限なら `api/chat.js` が `429 {code:'quota_exceeded'}`。Pro はカウントだけ進めて常に allowed。
+- **導線**: `src/components/UpsellNote.jsx`。上限・ゲートに達すると表示。管理者は Checkout ボタン、一般ユーザーは「管理者に依頼」。CSVゲート・チャット上限の両方で使用。
+- 定数は `src/lib/plan.js` の `PLAN_LIMITS`。制限値を変えるときはここと `010` の RPC を合わせる。
+- `api/chat.js` はこの回からログイン必須（`getUserTeam`）。未ログインは 401。
+
+`supabase/010_plan_limits.sql` を ① staging → ② production の順で実行。
