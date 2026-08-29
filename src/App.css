@@ -307,6 +307,48 @@ button.link {
   color: #b91c1c;
 }
 
+.upsell-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  border-radius: 8px;
+}
+
+.upsell-note__msg {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.upsell-note__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.upsell-note__btn {
+  width: auto;
+  padding: 0.4rem 0.9rem;
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chat-usage {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  text-align: right;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;

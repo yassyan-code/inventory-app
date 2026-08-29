@@ -8,6 +8,7 @@ import {
   unarchiveProduct,
 } from '../lib/inventory'
 import { toCsv, downloadCsv } from '../lib/csv'
+import UpsellNote from './UpsellNote'
 
 const CSV_HEADERS = [
   { key: 'name', label: '商品名' },
@@ -25,7 +26,7 @@ const formatDate = (iso) => {
   return new Date(iso).toLocaleDateString('ja-JP')
 }
 
-export default function InventoryList({ refreshKey, isAdmin = false }) {
+export default function InventoryList({ refreshKey, isAdmin = false, isPro = false }) {
   const [items, setItems] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -217,14 +218,27 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
           />
           非表示の商品も表示する
         </label>
-        <button
-          className="secondary"
-          onClick={handleExportCsv}
-          disabled={items.length === 0}
-        >
-          CSVエクスポート
-        </button>
+        {isPro ? (
+          <button
+            className="secondary"
+            onClick={handleExportCsv}
+            disabled={items.length === 0}
+          >
+            CSVエクスポート
+          </button>
+        ) : (
+          <button className="secondary" disabled title="Proプラン限定">
+            🔒 CSVエクスポート
+          </button>
+        )}
       </div>
+
+      {!isPro && (
+        <UpsellNote
+          isAdmin={isAdmin}
+          message="CSVエクスポートはProプラン限定の機能です。"
+        />
+      )}
 
       {loading && <p>読み込み中...</p>}
       {error && <p className="message">{error}</p>}

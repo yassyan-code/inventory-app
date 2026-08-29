@@ -208,8 +208,10 @@ function App() {
         {tab === TABS.SCAN && (
           <RegisterPanel isAdmin={isAdmin} onChanged={() => setRefreshKey((k) => k + 1)} />
         )}
-        {tab === TABS.LIST && <InventoryList isAdmin={isAdmin} refreshKey={refreshKey} />}
-        {tab === TABS.CHAT && <ChatPanel />}
+        {tab === TABS.LIST && (
+          <InventoryList isAdmin={isAdmin} isPro={membership?.isPro ?? false} refreshKey={refreshKey} />
+        )}
+        {tab === TABS.CHAT && <ChatPanel membership={membership} />}
       </main>
 
       <footer className="app-footer">CI/CD動作確認 v1</footer>

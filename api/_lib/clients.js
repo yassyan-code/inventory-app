@@ -18,10 +18,10 @@ export function serviceClient() {
   })
 }
 
-// リクエストの Authorization ヘッダー(Supabase のアクセストークン)から
-// ログインユーザーを検証し、そのユーザーが owner を務めるチームを返す。
-// owner でなければ null を返す(課金操作は管理者のみ)。
-export async function getOwnerTeam(req) {
+// Authorization ヘッダーからログインユーザーを検証し、
+// そのユーザーの所属チームを返す（ロール不問）。
+// 返り値の anon はユーザーの JWT を積んだクライアント（RPC などに再利用可）。
+export async function getUserTeam(req) {
   const authHeader = req.headers.authorization || ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
   if (!token) return { error: 'missing token', status: 401 }
@@ -44,7 +44,14 @@ export async function getOwnerTeam(req) {
     .maybeSingle()
 
   if (mErr || !membership) return { error: 'team not found', status: 404 }
-  if (membership.role !== 'owner') return { error: 'owner only', status: 403 }
 
-  return { user, team: membership.teams, teamId: membership.team_id }
+  return { user, anon, team: membership.teams, teamId: membership.team_id, role: membership.role }
+}
+
+// 課金操作用: getUserTeam に加えて owner であることを要求する。
+export async function getOwnerTeam(req) {
+  const result = await getUserTeam(req)
+  if (result.error) return result
+  if (result.role !== 'owner') return { error: 'owner only', status: 403 }
+  return result
 }
