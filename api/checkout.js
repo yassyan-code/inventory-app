@@ -17,8 +17,8 @@ export default async function handler(req, res) {
   }
   const { user, team, teamId } = auth
 
-  if (team.plan === 'pro' && team.plan_status === 'active') {
-    res.status(400).json({ error: 'already on Pro plan' })
+  if (team.plan === 'pro' && ['active', 'trialing', 'past_due'].includes(team.plan_status)) {
+    res.status(400).json({ error: 'already subscribed', code: 'already_subscribed' })
     return
   }
 
@@ -41,6 +41,31 @@ export default async function handler(req, res) {
       })
       customerId = customer.id
       await serviceClient().from('teams').update({ stripe_customer_id: customerId }).eq('id', teamId)
+    }
+
+    // DB が古い場合の保険: Stripe 側に生きているサブスクがあれば二重作成しない。
+    // 既存を teams に取り込んで「契約済み」を返す（フロントは再取得すれば Pro になる）。
+    const existing = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 3,
+    })
+    const live = existing.data.find((s) => ['active', 'trialing', 'past_due'].includes(s.status))
+    if (live) {
+      await serviceClient()
+        .from('teams')
+        .update({
+          plan: 'pro',
+          plan_status: live.status,
+          stripe_subscription_id: live.id,
+          cancel_at_period_end: !!live.cancel_at_period_end,
+          current_period_end: live.current_period_end
+            ? new Date(live.current_period_end * 1000).toISOString()
+            : null,
+        })
+        .eq('id', teamId)
+      res.status(400).json({ error: 'already subscribed', code: 'already_subscribed' })
+      return
     }
 
     const session = await stripe.checkout.sessions.create({

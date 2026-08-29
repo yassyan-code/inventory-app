@@ -15,15 +15,26 @@ async function postWithAuth(path) {
 
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(body.error || `リクエストに失敗しました (${res.status})`)
+    const err = new Error(body.error || `リクエストに失敗しました (${res.status})`)
+    err.code = body.code
+    throw err
   }
   return body
 }
 
 // Proプランのチェックアウト画面へ遷移する
 export async function startCheckout() {
-  const { url } = await postWithAuth('/api/checkout')
-  window.location.href = url
+  try {
+    const { url } = await postWithAuth('/api/checkout')
+    window.location.href = url
+  } catch (err) {
+    // 既に契約済み（DBが古かっただけ）なら、状態を取り込んで画面を更新する
+    if (err.code === 'already_subscribed') {
+      window.location.href = '/?checkout=success'
+      return
+    }
+    throw err
+  }
 }
 
 // Stripeカスタマーポータル(支払い方法変更・解約)へ遷移する

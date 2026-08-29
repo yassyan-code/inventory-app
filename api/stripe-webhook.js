@@ -105,13 +105,30 @@ export default async function handler(req, res) {
         const match = sub.metadata?.team_id
           ? { id: sub.metadata.team_id }
           : { stripe_customer_id: sub.customer }
-        await updateTeam(match, {
-          plan: 'free',
-          plan_status: 'canceled',
-          stripe_subscription_id: null,
-          cancel_at_period_end: false,
-          current_period_end: null,
-        })
+
+        // 同じ顧客に別の有効なサブスクが残っていれば、そちらを反映して下げない。
+        // (重複契約の片方を解約したケースなど)
+        let other = null
+        try {
+          const list = await stripe.subscriptions.list({ customer: sub.customer, status: 'all', limit: 5 })
+          other = list.data.find(
+            (s) => s.id !== sub.id && ['active', 'trialing', 'past_due'].includes(s.status)
+          )
+        } catch (err) {
+          console.error('[webhook] list subs on delete failed:', err.message)
+        }
+
+        if (other) {
+          await updateTeam(match, patchFromSubscription(other))
+        } else {
+          await updateTeam(match, {
+            plan: 'free',
+            plan_status: 'canceled',
+            stripe_subscription_id: null,
+            cancel_at_period_end: false,
+            current_period_end: null,
+          })
+        }
         break
       }
 
