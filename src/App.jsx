@@ -11,6 +11,7 @@ import ChatPanel from './components/ChatPanel'
 import PlanControls from './components/PlanControls'
 import OnboardingGuide from './components/OnboardingGuide'
 import AdminPanel from './components/AdminPanel'
+import LegalView from './components/LegalView'
 import { fetchAdminOverview } from './lib/admin'
 
 const TABS = {
@@ -38,6 +39,9 @@ function App() {
     new URLSearchParams(window.location.search).get('checkout')
   )
   const [isOperator, setIsOperator] = useState(false)
+  const [legalSlug, setLegalSlug] = useState(() =>
+    new URLSearchParams(window.location.search).get('legal')
+  )
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -131,6 +135,19 @@ function App() {
     setRecovering(false)
   }
 
+  // 法務ページはログイン状態に関わらず表示できる（規約は登録前に読めるべき）
+  if (legalSlug) {
+    const back = () => {
+      window.history.replaceState(null, '', window.location.pathname)
+      setLegalSlug(null)
+    }
+    return (
+      <div className="app-shell">
+        <LegalView slug={legalSlug} onBack={back} />
+      </div>
+    )
+  }
+
   if (checkingSession) {
     return <div className="app-loading">読み込み中...</div>
   }
@@ -149,6 +166,14 @@ function App() {
       <div className="app-shell app-shell--centered">
         <h1>在庫管理アプリ</h1>
         <Auth />
+        <p className="legal-consent">
+          アカウントを作成すると
+          <a href="?legal=terms">利用規約</a>および
+          <a href="?legal=privacy">プライバシーポリシー</a>に同意したものとみなされます。
+        </p>
+        <p className="legal-consent">
+          <a href="?legal=tokushoho">特定商取引法に基づく表記</a>
+        </p>
       </div>
     )
   }
@@ -253,11 +278,13 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <a href={`mailto:${SUPPORT_EMAIL}?subject=在庫管理アプリのお問い合わせ`}>サポートに問い合わせる</a>
+        <a href={`mailto:${SUPPORT_EMAIL}?subject=在庫管理アプリのお問い合わせ`}>サポート</a>
         <span className="app-footer__sep">·</span>
-        <a href="https://github.com/yassyan-code/inventory-app#readme" target="_blank" rel="noreferrer">
-          使い方
-        </a>
+        <a href="?legal=terms">利用規約</a>
+        <span className="app-footer__sep">·</span>
+        <a href="?legal=privacy">プライバシー</a>
+        <span className="app-footer__sep">·</span>
+        <a href="?legal=tokushoho">特商法表記</a>
       </footer>
     </div>
   )

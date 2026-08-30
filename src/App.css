@@ -642,3 +642,35 @@ td {
   margin: 0 0.5rem;
   opacity: 0.5;
 }
+
+/* --- 第23回: 法務ページ --- */
+.legal-view {
+  text-align: left;
+  width: 100%;
+}
+.legal-view h1 {
+  font-size: 1.3rem;
+  margin: 0.75rem 0;
+}
+.legal-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  background: #f8fafc;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+}
+.legal-consent {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  max-width: 320px;
+  margin: 0.5rem auto 0;
+}
+.legal-consent a {
+  color: #2563eb;
+  margin: 0 0.15rem;
+}
