@@ -1,0 +1,57 @@
+import { supabase } from './supabaseClient'
+
+// ログイン中ユーザーのアクセストークンを付けて課金APIを叩く共通処理
+async function postWithAuth(path) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('未ログインです')
+
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  })
+
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const err = new Error(body.error || `リクエストに失敗しました (${res.status})`)
+    err.code = body.code
+    throw err
+  }
+  return body
+}
+
+// Proプランのチェックアウト画面へ遷移する
+export async function startCheckout() {
+  try {
+    const { url } = await postWithAuth('/api/checkout')
+    window.location.href = url
+  } catch (err) {
+    // 既に契約済み（DBが古かっただけ）なら、状態を取り込んで画面を更新する
+    if (err.code === 'already_subscribed') {
+      window.location.href = '/?checkout=success'
+      return
+    }
+    throw err
+  }
+}
+
+// Stripeカスタマーポータル(支払い方法変更・解約)へ遷移する
+export async function openBillingPortal() {
+  const { url } = await postWithAuth('/api/billing-portal')
+  window.location.href = url
+}
+
+// 決済完了後、Stripe側の最新状態を取得して teams に反映する
+export async function syncCheckout() {
+  return postWithAuth('/api/checkout-sync') // { plan, plan_status, synced }
+}
+
+// 無料プランの商品上限
+export const FREE_PLAN_PRODUCT_LIMIT = 50
+
+// DBトリガーが投げる上限エラーかどうかを判定する
+export function isFreePlanLimitError(err) {
+  return /free plan product limit reached/i.test(err?.message || '')
+}

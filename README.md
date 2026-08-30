@@ -92,6 +92,10 @@ supabase/
 - [使い方マニュアル](docs/manual.md) — 初めて使う人向け
 - [仕様書](docs/spec.md) — 機能・データモデルの詳細
 - [引き継ぎメモ](docs/handover.md) — 次に開発する人向け
+- [認証](docs/auth.md) / [課金](docs/billing.md) / [セキュリティ](docs/security.md) — SaaS 基盤
+- [SLO・監視](docs/slo.md) / [運用](docs/operations.md) / [障害対応](docs/incident-runbook.md)
+- [リリースチェックリスト](docs/release-checklist.md) — 有料公開の最終手順（法務含む）
+- [23回のふりかえり](docs/retrospective.md)
 
 ## 今後の拡張候補
 

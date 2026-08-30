@@ -2,17 +2,26 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { supabase } from './lib/supabaseClient'
 import { getMyMembership } from './lib/inventory'
+import { syncCheckout } from './lib/billing'
 import Auth from './components/Auth'
 import ResetPassword from './components/ResetPassword'
 import RegisterPanel from './components/RegisterPanel'
 import InventoryList from './components/InventoryList'
 import ChatPanel from './components/ChatPanel'
+import PlanControls from './components/PlanControls'
+import OnboardingGuide from './components/OnboardingGuide'
+import AdminPanel from './components/AdminPanel'
+import LegalView from './components/LegalView'
+import { fetchAdminOverview } from './lib/admin'
 
 const TABS = {
   SCAN: 'scan',
   LIST: 'list',
   CHAT: 'chat',
+  ADMIN: 'admin',
 }
+
+const SUPPORT_EMAIL = 'support@example.com' // ← 本番の問い合わせ先に置き換える
 
 // 再設定リンクで開かれたか（URL ハッシュに recovery トークンが載る）を初期判定する
 function hasRecoveryInUrl() {
@@ -26,6 +35,13 @@ function App() {
   const [membership, setMembership] = useState(null)
   const [tab, setTab] = useState(TABS.SCAN)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [checkoutNotice, setCheckoutNotice] = useState(() =>
+    new URLSearchParams(window.location.search).get('checkout')
+  )
+  const [isOperator, setIsOperator] = useState(false)
+  const [legalSlug, setLegalSlug] = useState(() =>
+    new URLSearchParams(window.location.search).get('legal')
+  )
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -68,10 +84,68 @@ function App() {
     }
   }, [session, recovering])
 
+  // 運営者かどうか（運営APIが通れば「運営」タブを出す）
+  useEffect(() => {
+    if (!session || recovering) {
+      setIsOperator(false)
+      return
+    }
+    let cancelled = false
+    fetchAdminOverview()
+      .then(() => !cancelled && setIsOperator(true))
+      .catch(() => !cancelled && setIsOperator(false))
+    return () => {
+      cancelled = true
+    }
+  }, [session, recovering])
+
+  // Stripe Checkout から戻ってきたときの処理。
+  // 成功時は Webhook 反映に少しラグがあるので、Pro になるまで数回ポーリングする。
+  useEffect(() => {
+    if (!checkoutNotice) return
+    window.history.replaceState(null, '', window.location.pathname)
+    if (checkoutNotice !== 'success') return
+
+    let cancelled = false
+    ;(async () => {
+      // まず Stripe 側の最新状態を teams に反映（Webhook 待ちに依存しない）
+      try {
+        await syncCheckout()
+      } catch (err) {
+        console.warn('[checkout-sync] 失敗:', err.message)
+      }
+      if (cancelled) return
+      try {
+        const m = await getMyMembership()
+        if (cancelled) return
+        setMembership(m)
+        setCheckoutNotice(m.isPro ? 'done' : 'success')
+      } catch {
+        /* 次回のメンバーシップ取得で反映される */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [checkoutNotice])
+
   const finishRecovery = () => {
     // URL からトークンを除去してログイン画面へ
     window.history.replaceState(null, '', window.location.pathname)
     setRecovering(false)
+  }
+
+  // 法務ページはログイン状態に関わらず表示できる（規約は登録前に読めるべき）
+  if (legalSlug) {
+    const back = () => {
+      window.history.replaceState(null, '', window.location.pathname)
+      setLegalSlug(null)
+    }
+    return (
+      <div className="app-shell">
+        <LegalView slug={legalSlug} onBack={back} />
+      </div>
+    )
   }
 
   if (checkingSession) {
@@ -92,6 +166,14 @@ function App() {
       <div className="app-shell app-shell--centered">
         <h1>在庫管理アプリ</h1>
         <Auth />
+        <p className="legal-consent">
+          アカウントを作成すると
+          <a href="?legal=terms">利用規約</a>および
+          <a href="?legal=privacy">プライバシーポリシー</a>に同意したものとみなされます。
+        </p>
+        <p className="legal-consent">
+          <a href="?legal=tokushoho">特定商取引法に基づく表記</a>
+        </p>
       </div>
     )
   }
@@ -111,6 +193,7 @@ function App() {
               <span className={isAdmin ? 'role-badge role-badge--admin' : 'role-badge'}>
                 {isAdmin ? '管理者' : '一般ユーザー'}
               </span>
+              <PlanControls membership={membership} />
             </p>
           )}
         </div>
@@ -118,6 +201,34 @@ function App() {
           ログアウト
         </button>
       </header>
+
+      {checkoutNotice === 'done' && (
+        <div className="checkout-banner checkout-banner--success">
+          🎉 Proプランへのアップグレードが完了しました。ありがとうございます！
+        </div>
+      )}
+      {checkoutNotice === 'success' && (
+        <div className="checkout-banner">決済を確認しています... 少しお待ちください。</div>
+      )}
+      {checkoutNotice === 'cancel' && (
+        <div className="checkout-banner">アップグレードはキャンセルされました。</div>
+      )}
+
+      {membership?.pastDue && (
+        <div className="checkout-banner checkout-banner--alert">
+          お支払いを確認できませんでした。カードの有効期限などをご確認ください。
+          {membership.isAdmin && 'ヘッダーの「プラン管理」から更新できます。'}
+          このまま解決しないとPro機能は停止されます。
+        </div>
+      )}
+      {membership?.scheduledCancel && !membership.pastDue && (
+        <div className="checkout-banner">
+          解約手続きが完了しています。
+          {membership.currentPeriodEnd &&
+            `${new Date(membership.currentPeriodEnd).toLocaleDateString('ja-JP')}まで`}
+          Proプランをご利用いただけます。それ以降は無料プランに切り替わります（データは保持されます）。
+        </div>
+      )}
 
       <nav className="tabs">
         <button
@@ -138,17 +249,43 @@ function App() {
         >
           チャット
         </button>
+        {isOperator && (
+          <button
+            className={tab === TABS.ADMIN ? 'active' : ''}
+            onClick={() => setTab(TABS.ADMIN)}
+          >
+            運営
+          </button>
+        )}
       </nav>
 
       <main>
         {tab === TABS.SCAN && (
-          <RegisterPanel isAdmin={isAdmin} onChanged={() => setRefreshKey((k) => k + 1)} />
+          <>
+            <OnboardingGuide
+              teamId={membership?.teamId}
+              refreshKey={refreshKey}
+              onStartScan={() => setTab(TABS.SCAN)}
+            />
+            <RegisterPanel isAdmin={isAdmin} onChanged={() => setRefreshKey((k) => k + 1)} />
+          </>
         )}
-        {tab === TABS.LIST && <InventoryList isAdmin={isAdmin} refreshKey={refreshKey} />}
-        {tab === TABS.CHAT && <ChatPanel />}
+        {tab === TABS.LIST && (
+          <InventoryList isAdmin={isAdmin} isPro={membership?.isPro ?? false} refreshKey={refreshKey} />
+        )}
+        {tab === TABS.CHAT && <ChatPanel membership={membership} />}
+        {tab === TABS.ADMIN && isOperator && <AdminPanel />}
       </main>
 
-      <footer className="app-footer">CI/CD動作確認 v1</footer>
+      <footer className="app-footer">
+        <a href={`mailto:${SUPPORT_EMAIL}?subject=在庫管理アプリのお問い合わせ`}>サポート</a>
+        <span className="app-footer__sep">·</span>
+        <a href="?legal=terms">利用規約</a>
+        <span className="app-footer__sep">·</span>
+        <a href="?legal=privacy">プライバシー</a>
+        <span className="app-footer__sep">·</span>
+        <a href="?legal=tokushoho">特商法表記</a>
+      </footer>
     </div>
   )
 }

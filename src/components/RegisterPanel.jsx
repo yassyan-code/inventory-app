@@ -3,6 +3,7 @@ import CameraScanner from './CameraScanner'
 import HardwareScannerInput from './HardwareScannerInput'
 import { findByBarcode, createProduct, adjustQuantity, listCategories } from '../lib/inventory'
 import { lookupProductName } from '../lib/productLookup'
+import { isFreePlanLimitError, FREE_PLAN_PRODUCT_LIMIT } from '../lib/billing'
 
 const MODES = {
   CAMERA: 'camera',
@@ -121,7 +122,14 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
       resetForm()
       listCategories().then(setCategoryOptions).catch(() => {})
     } catch (err) {
-      setMessage('登録エラー: ' + err.message)
+      if (isFreePlanLimitError(err)) {
+        setMessage(
+          `無料プランの商品登録上限（${FREE_PLAN_PRODUCT_LIMIT}件）に達しました。` +
+            'ヘッダーの「Proにアップグレード」から上限を解除できます。'
+        )
+      } else {
+        setMessage('登録エラー: ' + err.message)
+      }
     } finally {
       setIsSubmitting(false)
     }
