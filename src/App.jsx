@@ -9,12 +9,18 @@ import RegisterPanel from './components/RegisterPanel'
 import InventoryList from './components/InventoryList'
 import ChatPanel from './components/ChatPanel'
 import PlanControls from './components/PlanControls'
+import OnboardingGuide from './components/OnboardingGuide'
+import AdminPanel from './components/AdminPanel'
+import { fetchAdminOverview } from './lib/admin'
 
 const TABS = {
   SCAN: 'scan',
   LIST: 'list',
   CHAT: 'chat',
+  ADMIN: 'admin',
 }
+
+const SUPPORT_EMAIL = 'support@example.com' // ← 本番の問い合わせ先に置き換える
 
 // 再設定リンクで開かれたか（URL ハッシュに recovery トークンが載る）を初期判定する
 function hasRecoveryInUrl() {
@@ -31,6 +37,7 @@ function App() {
   const [checkoutNotice, setCheckoutNotice] = useState(() =>
     new URLSearchParams(window.location.search).get('checkout')
   )
+  const [isOperator, setIsOperator] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -68,6 +75,21 @@ function App() {
         console.warn('[membership] 取得に失敗:', err.message)
         if (!cancelled) setMembership(null)
       })
+    return () => {
+      cancelled = true
+    }
+  }, [session, recovering])
+
+  // 運営者かどうか（運営APIが通れば「運営」タブを出す）
+  useEffect(() => {
+    if (!session || recovering) {
+      setIsOperator(false)
+      return
+    }
+    let cancelled = false
+    fetchAdminOverview()
+      .then(() => !cancelled && setIsOperator(true))
+      .catch(() => !cancelled && setIsOperator(false))
     return () => {
       cancelled = true
     }
@@ -202,19 +224,41 @@ function App() {
         >
           チャット
         </button>
+        {isOperator && (
+          <button
+            className={tab === TABS.ADMIN ? 'active' : ''}
+            onClick={() => setTab(TABS.ADMIN)}
+          >
+            運営
+          </button>
+        )}
       </nav>
 
       <main>
         {tab === TABS.SCAN && (
-          <RegisterPanel isAdmin={isAdmin} onChanged={() => setRefreshKey((k) => k + 1)} />
+          <>
+            <OnboardingGuide
+              teamId={membership?.teamId}
+              refreshKey={refreshKey}
+              onStartScan={() => setTab(TABS.SCAN)}
+            />
+            <RegisterPanel isAdmin={isAdmin} onChanged={() => setRefreshKey((k) => k + 1)} />
+          </>
         )}
         {tab === TABS.LIST && (
           <InventoryList isAdmin={isAdmin} isPro={membership?.isPro ?? false} refreshKey={refreshKey} />
         )}
         {tab === TABS.CHAT && <ChatPanel membership={membership} />}
+        {tab === TABS.ADMIN && isOperator && <AdminPanel />}
       </main>
 
-      <footer className="app-footer">CI/CD動作確認 v1</footer>
+      <footer className="app-footer">
+        <a href={`mailto:${SUPPORT_EMAIL}?subject=在庫管理アプリのお問い合わせ`}>サポートに問い合わせる</a>
+        <span className="app-footer__sep">·</span>
+        <a href="https://github.com/yassyan-code/inventory-app#readme" target="_blank" rel="noreferrer">
+          使い方
+        </a>
+      </footer>
     </div>
   )
 }

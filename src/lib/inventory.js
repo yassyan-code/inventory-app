@@ -233,3 +233,14 @@ export async function listCategories() {
   const unique = [...new Set((data ?? []).map((d) => d.category).filter(Boolean))]
   return unique.sort((a, b) => a.localeCompare(b, 'ja'))
 }
+
+// 自チームの（非表示でない）商品数。オンボーディングの進捗判定に使う。
+export async function countProducts() {
+  const { count, error } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .is('archived_at', null)
+
+  if (error) throw error
+  return count ?? 0
+}
