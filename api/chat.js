@@ -7,8 +7,13 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { getUserTeam } from './_lib/clients.js'
+import { enforceRateLimit } from './_lib/ratelimit.js'
 
 const client = new Anthropic() // ANTHROPIC_API_KEY 環境変数から自動で読み込まれる
+
+// サーバー側の入力上限（フロントのバリデーションを信用しない）
+const MAX_MESSAGES = 50
+const MAX_CHARS_PER_MESSAGE = 4000
 
 const SYSTEM_PROMPT =
   'あなたは在庫管理アプリに組み込まれたアシスタントです。バーコード登録・在庫数の増減・在庫一覧の使い方など、' +
@@ -25,11 +30,30 @@ export default async function handler(req, res) {
     res.status(400).json({ error: 'messages is required' })
     return
   }
+  if (messages.length > MAX_MESSAGES) {
+    res.status(400).json({ error: 'too many messages' })
+    return
+  }
+  if (
+    messages.some(
+      (m) => typeof m?.content !== 'string' || m.content.length > MAX_CHARS_PER_MESSAGE
+    )
+  ) {
+    res.status(400).json({ error: 'message too long' })
+    return
+  }
 
   // ログイン必須（＋どのチームの利用枠を消費するか特定）
   const auth = await getUserTeam(req)
   if (auth.error) {
     res.status(auth.status).json({ error: auth.error })
+    return
+  }
+
+  // レート制限: 1ユーザー 60秒あたり 10 リクエストまで
+  const rl = await enforceRateLimit(auth.anon, `chat:${auth.user.id}`, 10, 60)
+  if (!rl.ok) {
+    res.status(429).json({ error: 'rate_limited', retryAfter: rl.retryAfter })
     return
   }
 

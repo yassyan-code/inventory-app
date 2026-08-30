@@ -26,8 +26,22 @@ async function readRawBody(req) {
 }
 
 async function updateTeam(match, patch) {
-  const { error } = await serviceClient().from('teams').update(patch).match(match)
-  if (error) console.error('[webhook] teams update error:', error.message)
+  const db = serviceClient()
+  const { data, error } = await db.from('teams').update(patch).match(match).select('id, plan, plan_status')
+  if (error) {
+    console.error('[webhook] teams update error:', error.message)
+    return
+  }
+  // 監査ログ: プラン/状態が変わったチームを記録
+  for (const row of data ?? []) {
+    await db.from('audit_log').insert({
+      team_id: row.id,
+      actor_user_id: null, // Stripe 起因（人ではない）
+      action: 'billing.plan_updated',
+      target: row.id,
+      meta: { plan: patch.plan ?? row.plan, plan_status: patch.plan_status ?? row.plan_status },
+    })
+  }
 }
 
 // invoice から顧客/サブスクを引いて teams を更新する
@@ -52,8 +66,12 @@ export default async function handler(req, res) {
     return
   }
 
+  // skip-verify は本番では絶対に効かせない（誤設定されても無視する）
+  const allowSkip =
+    process.env.STRIPE_WEBHOOK_SKIP_VERIFY === '1' && process.env.VERCEL_ENV !== 'production'
+
   let event
-  if (process.env.STRIPE_WEBHOOK_SKIP_VERIFY === '1') {
+  if (allowSkip) {
     // ローカル専用: 署名検証をスキップ。vercel dev は req.body を既にパース済み。
     event = req.body
     console.warn('[webhook] signature verification SKIPPED (dev mode)')

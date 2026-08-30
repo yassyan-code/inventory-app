@@ -3,6 +3,7 @@
 // 継続課金の運用(請求・解約・失敗)は第19回で Webhook 側を詰める。
 
 import { stripe, getOwnerTeam } from './_lib/clients.js'
+import { enforceRateLimit } from './_lib/ratelimit.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,7 +16,13 @@ export default async function handler(req, res) {
     res.status(auth.status).json({ error: auth.error })
     return
   }
-  const { team } = auth
+  const { team, user, anon } = auth
+
+  const rl = await enforceRateLimit(anon, `portal:${user.id}`, 10, 300)
+  if (!rl.ok) {
+    res.status(429).json({ error: 'rate_limited', retryAfter: rl.retryAfter })
+    return
+  }
 
   if (!team.stripe_customer_id) {
     res.status(400).json({ error: 'no Stripe customer for this team' })

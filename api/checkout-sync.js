@@ -5,6 +5,7 @@
 
 import { stripe, serviceClient, getOwnerTeam } from './_lib/clients.js'
 import { patchFromSubscription } from './_lib/billing-state.js'
+import { enforceRateLimit } from './_lib/ratelimit.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,7 +18,13 @@ export default async function handler(req, res) {
     res.status(auth.status).json({ error: auth.error })
     return
   }
-  const { team, teamId } = auth
+  const { team, teamId, user, anon } = auth
+
+  const rl = await enforceRateLimit(anon, `sync:${user.id}`, 20, 60)
+  if (!rl.ok) {
+    res.status(429).json({ error: 'rate_limited', retryAfter: rl.retryAfter })
+    return
+  }
 
   if (!team.stripe_customer_id) {
     res.status(200).json({ plan: team.plan || 'free', synced: false })

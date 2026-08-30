@@ -3,6 +3,7 @@
 // 返ってきた url へリダイレクトする → Stripe のホスト決済画面へ。
 
 import { stripe, serviceClient, getOwnerTeam } from './_lib/clients.js'
+import { enforceRateLimit } from './_lib/ratelimit.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,7 +16,14 @@ export default async function handler(req, res) {
     res.status(auth.status).json({ error: auth.error })
     return
   }
-  const { user, team, teamId } = auth
+  const { user, team, teamId, anon } = auth
+
+  // レート制限: 5分あたり 5 回まで（決済セッションの乱造を防ぐ）
+  const rl = await enforceRateLimit(anon, `checkout:${user.id}`, 5, 300)
+  if (!rl.ok) {
+    res.status(429).json({ error: 'rate_limited', retryAfter: rl.retryAfter })
+    return
+  }
 
   if (team.plan === 'pro' && ['active', 'trialing', 'past_due'].includes(team.plan_status)) {
     res.status(400).json({ error: 'already subscribed', code: 'already_subscribed' })
@@ -81,6 +89,13 @@ export default async function handler(req, res) {
       // 要求されるため、シンプルなサブスク課金では明示的に無効化する。
       managed_payments: { enabled: false },
     })
+
+    // 監査ログ（誰がアップグレードを開始したか）
+    anon.rpc('write_audit', {
+      p_action: 'billing.checkout_started',
+      p_target: teamId,
+      p_meta: { price: priceId },
+    }).then(({ error }) => error && console.error('[checkout] audit failed:', error.message))
 
     res.status(200).json({ url: session.url })
   } catch (err) {
