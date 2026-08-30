@@ -556,6 +556,7 @@ td {
 .onboarding {
   border: 1px solid #bfdbfe;
   background: #eff6ff;
+  color: #1e3a5f; /* ダークテーマでも薄い青背景に対して読めるよう明示 */
   border-radius: 8px;
   padding: 0.85rem 1rem;
   margin-bottom: 1rem;
@@ -565,6 +566,12 @@ td {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+  color: #1e3a5f;
+}
+.onboarding strong,
+.onboarding b,
+.onboarding li {
+  color: #1e3a5f;
 }
 .onboarding__close {
   width: auto;
@@ -589,7 +596,7 @@ td {
 .onboarding__hint {
   margin: 0.3rem 0 0;
   font-size: 0.78rem;
-  opacity: 0.7;
+  color: #3b5a7a;
 }
 
 .admin-summary {
