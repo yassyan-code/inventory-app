@@ -1,0 +1,539 @@
+<title>出荷前夜</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --paper:#f0f2f1;
+    --surface:#f7f8f7;
+    --ink:#1a201e;
+    --ink-soft:#4c5551;
+    --ink-faint:#7b847f;
+    --rule:#d3d8d5;
+    --rule-strong:#b7bfbb;
+    --accent:#0f6c5f;
+    --accent-soft:#e2efec;
+    --done:#2f7d4f;
+    --done-soft:#e4f0e6;
+    --pend:#a5641a;
+    --pend-soft:#f6ebdc;
+    --stamp:#b23b2e;
+    --shadow:0 1px 0 var(--rule), 0 18px 40px -28px rgba(20,32,28,.5);
+  }
+  :root:not([data-theme="light"]){
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#121617;
+      --surface:#1a1f20;
+      --ink:#e7eae7;
+      --ink-soft:#a9b2ad;
+      --ink-faint:#7c857f;
+      --rule:#2b3231;
+      --rule-strong:#3a4341;
+      --accent:#4fb3a1;
+      --accent-soft:#173230;
+      --done:#5cbd7f;
+      --done-soft:#16281d;
+      --pend:#d3944a;
+      --pend-soft:#2c2115;
+      --stamp:#e06a5c;
+      --shadow:0 1px 0 var(--rule), 0 24px 50px -30px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#121617;
+    --surface:#1a1f20;
+    --ink:#e7eae7;
+    --ink-soft:#a9b2ad;
+    --ink-faint:#7c857f;
+    --rule:#2b3231;
+    --rule-strong:#3a4341;
+    --accent:#4fb3a1;
+    --accent-soft:#173230;
+    --done:#5cbd7f;
+    --done-soft:#16281d;
+    --pend:#d3944a;
+    --pend-soft:#2c2115;
+    --stamp:#e06a5c;
+    --shadow:0 1px 0 var(--rule), 0 24px 50px -30px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:820px;
+    margin:0 auto;
+    padding:clamp(28px,6vw,72px) clamp(18px,5vw,40px) 96px;
+  }
+
+  /* ---- manifest header ---- */
+  .sheet{
+    background:var(--surface);
+    border:1px solid var(--rule-strong);
+    box-shadow:var(--shadow);
+  }
+  .head{
+    padding:clamp(24px,5vw,42px);
+    border-bottom:2px solid var(--ink);
+    position:relative;
+    overflow:hidden;
+  }
+  .eyebrow{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:12px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 14px;
+  }
+  h1{
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    font-weight:900;
+    font-size:clamp(2.6rem,9vw,4.2rem);
+    line-height:.98;
+    letter-spacing:.01em;
+    margin:0;
+    text-wrap:balance;
+  }
+  .sub{
+    margin:18px 0 0;
+    max-width:52ch;
+    color:var(--ink-soft);
+    font-size:1.02rem;
+  }
+  .meta{
+    margin-top:26px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+  }
+  .meta div{
+    background:var(--surface);
+    padding:12px 14px;
+  }
+  .meta dt{
+    font-family:"JetBrains Mono",monospace;
+    font-size:10.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 3px;
+  }
+  .meta dd{
+    margin:0;
+    font-family:"JetBrains Mono",monospace;
+    font-weight:500;
+    font-size:.92rem;
+    font-variant-numeric:tabular-nums;
+  }
+  .stamp{
+    position:absolute;
+    right:clamp(-6px,2vw,24px);
+    top:clamp(14px,4vw,30px);
+    transform:rotate(7deg);
+    border:2.5px solid var(--stamp);
+    color:var(--stamp);
+    border-radius:7px;
+    padding:7px 14px 5px;
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    font-weight:700;
+    font-size:clamp(.72rem,2.4vw,.92rem);
+    letter-spacing:.08em;
+    text-align:center;
+    line-height:1.35;
+    opacity:.92;
+    mix-blend-mode:multiply;
+  }
+  :root[data-theme="dark"] .stamp,
+  :root:not([data-theme="light"]) .stamp{mix-blend-mode:screen}
+  .stamp small{
+    display:block;
+    font-size:.62em;
+    letter-spacing:.14em;
+    font-weight:500;
+  }
+
+  /* ---- sections ---- */
+  section{padding:clamp(24px,5vw,42px);border-bottom:1px solid var(--rule)}
+  section:last-child{border-bottom:0}
+  .sec-label{
+    font-family:"JetBrains Mono",monospace;
+    font-size:11px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 6px;
+  }
+  h2{
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    font-weight:700;
+    font-size:1.5rem;
+    margin:0 0 22px;
+    letter-spacing:.02em;
+  }
+
+  /* ---- lesson manifest ---- */
+  ol.manifest{list-style:none;margin:0;padding:0}
+  ol.manifest li{
+    display:grid;
+    grid-template-columns:52px 1fr;
+    gap:0 16px;
+    padding:16px 0;
+    border-top:1px solid var(--rule);
+  }
+  ol.manifest li:first-child{border-top:0;padding-top:0}
+  .no{
+    font-family:"JetBrains Mono",monospace;
+    font-weight:700;
+    font-size:1.15rem;
+    color:var(--accent);
+    font-variant-numeric:tabular-nums;
+    padding-top:2px;
+  }
+  .row-body h3{
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    font-size:1.06rem;
+    font-weight:700;
+    margin:0 0 4px;
+  }
+  .row-body p{
+    margin:0;
+    color:var(--ink-soft);
+    font-size:.94rem;
+    line-height:1.7;
+  }
+  .tags{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px}
+  .tag{
+    font-family:"JetBrains Mono",monospace;
+    font-size:11px;
+    letter-spacing:.03em;
+    padding:2px 8px;
+    border-radius:4px;
+    border:1px solid var(--rule-strong);
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .tag.mig-ok{background:var(--done-soft);border-color:transparent;color:var(--done)}
+  .tag.mig-wait{background:var(--pend-soft);border-color:transparent;color:var(--pend)}
+  .tag.none{color:var(--ink-faint)}
+
+  /* ---- kata ---- */
+  .kata{display:grid;gap:12px}
+  .kata div{
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:14px;
+    align-items:baseline;
+    padding:14px 16px;
+    background:var(--accent-soft);
+    border-left:3px solid var(--accent);
+  }
+  .kata b{
+    font-family:"JetBrains Mono",monospace;
+    color:var(--accent);
+    font-size:.95rem;
+  }
+  .kata span{font-size:.96rem;color:var(--ink)}
+  .kata span em{font-style:normal;font-weight:700}
+
+  /* ---- checklist ---- */
+  .split{display:grid;gap:26px}
+  @media (min-width:640px){.split{grid-template-columns:1fr 1fr}}
+  .col h4{
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    font-size:.98rem;
+    margin:0 0 12px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .dot.g{background:var(--done)}
+  .dot.a{background:var(--pend)}
+  ul.check{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  ul.check li{
+    display:grid;
+    grid-template-columns:20px 1fr;
+    gap:9px;
+    font-size:.9rem;
+    line-height:1.55;
+    color:var(--ink-soft);
+  }
+  ul.check li::before{
+    font-family:"JetBrains Mono",monospace;
+    font-weight:700;
+    line-height:1.55;
+  }
+  .col.done ul.check li::before{content:"✓";color:var(--done)}
+  .col.todo ul.check li::before{content:"☐";color:var(--pend)}
+
+  .note{
+    margin-top:24px;
+    padding:14px 16px;
+    border:1px dashed var(--rule-strong);
+    font-size:.86rem;
+    color:var(--ink-soft);
+  }
+  .note code{
+    font-family:"JetBrains Mono",monospace;
+    font-size:.82rem;
+    background:var(--paper);
+    padding:1px 5px;
+    border-radius:3px;
+  }
+
+  footer{
+    max-width:820px;
+    margin:22px auto 0;
+    padding:0 clamp(18px,5vw,40px);
+    font-family:"JetBrains Mono",monospace;
+    font-size:11.5px;
+    letter-spacing:.06em;
+    color:var(--ink-faint);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  /* ---- submission (4 items) ---- */
+  ol.submit{list-style:none;margin:0;padding:0}
+  ol.submit li{
+    display:grid;
+    grid-template-columns:34px 1fr;
+    gap:0 14px;
+    padding:18px 0;
+    border-top:1px solid var(--rule);
+  }
+  ol.submit li:first-child{border-top:0;padding-top:0}
+  ol.submit .mk{
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    font-weight:900;
+    font-size:1.3rem;
+    color:var(--accent);
+    line-height:1.25;
+  }
+  ol.submit h3{
+    font-family:"Zen Kaku Gothic New",sans-serif;
+    font-size:1.04rem;
+    margin:0 0 7px;
+    display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  }
+  .chip{
+    font-family:"JetBrains Mono",monospace;
+    font-size:10px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:3px 9px;
+    border-radius:999px;
+    font-weight:700;
+  }
+  .chip.ok{background:var(--done-soft);color:var(--done)}
+  .chip.part{background:var(--pend-soft);color:var(--pend)}
+  ol.submit p{margin:0;color:var(--ink-soft);font-size:.92rem;line-height:1.7}
+  ol.submit p + p{margin-top:6px}
+  ol.submit a{color:var(--accent);word-break:break-all}
+
+  @media (prefers-reduced-motion:no-preference){
+    ol.manifest li,.kata div,.col{animation:rise .5s ease both}
+    ol.manifest li:nth-child(2){animation-delay:.04s}
+    ol.manifest li:nth-child(3){animation-delay:.08s}
+    ol.manifest li:nth-child(4){animation-delay:.12s}
+    ol.manifest li:nth-child(5){animation-delay:.16s}
+    ol.manifest li:nth-child(6){animation-delay:.2s}
+    ol.manifest li:nth-child(7){animation-delay:.24s}
+    ol.manifest li:nth-child(8){animation-delay:.28s}
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  }
+</style>
+
+<div class="wrap">
+  <div class="sheet">
+
+    <header class="head">
+      <p class="eyebrow">出荷マニフェスト &nbsp;/&nbsp; MANIFEST</p>
+      <h1>出荷前夜</h1>
+      <p class="sub">クロードコード部 全23回（Git×Railway 上級マスター 1–15 ＋ SaaS本体編 16–23）の修了提出。在庫管理アプリ inventory-app を、マルチテナントの有料 SaaS として出せる状態まで組み上げた。実装はすべて揃い、本番切替はユーザーの手作業を残すのみ。以下は実装完了時点（2026-08-31）の提出。</p>
+      <dl class="meta">
+        <div><dt>題材</dt><dd>inventory-app</dd></div>
+        <div><dt>全課程</dt><dd>全 23 回 修了</dd></div>
+        <div><dt>コード</dt><dd>PR #15 未マージ</dd></div>
+        <div><dt>CI</dt><dd>lint / test / build 緑</dd></div>
+      </dl>
+      <div class="stamp">実装完了<small>本番リリースは手作業待ち</small></div>
+    </header>
+
+    <section>
+      <p class="sec-label">Submission · 提出物（4点）</p>
+      <h2>提出</h2>
+      <ol class="submit">
+
+        <li>
+          <div class="mk">①</div>
+          <div>
+            <h3>稼働している有料SaaSのURL <span class="chip part">本番リリース後に発行</span></h3>
+            <p>現在デプロイ中は <a href="https://inventory-app-topaz-iota.vercel.app">inventory-app-topaz-iota.vercel.app</a>（Vercel）と <a href="https://inventory-app-production-64fe.up.railway.app">inventory-app-production-64fe.up.railway.app</a>（Railway）。ただし両方 <code>master</code> 追跡で、課金コード（PR #15）は未マージ＝無料機能のみ。</p>
+            <p>有料版が動くのはローカル <code>vercel dev</code> を staging DB に向けた状態のみ。公開URLは PR #15 マージ＋本番切替の完了後に発行する。</p>
+          </div>
+        </li>
+
+        <li>
+          <div class="mk">②</div>
+          <div>
+            <h3>規約 / 特商法 / プライバシーの整備状況 <span class="chip ok">骨格完成・実名待ち</span></h3>
+            <p>利用規約（全10条）・プライバシーポリシー（全10項）・特定商取引法に基づく表記を <code>src/lib/legalContent.js</code> に用意。アプリ内で <code>?legal=terms|privacy|tokushoho</code> として表示（ログイン前も可）、フッターとサインアップ画面に同意文言＋各ページへのリンク。</p>
+            <p>残：事業者情報（名称・責任者・所在地・電話・メール）と管轄裁判所が <code>{{ }}</code> のまま。弁護士・税理士のレビューは未（文面はたたき台と明記）。</p>
+          </div>
+        </li>
+
+        <li>
+          <div class="mk">③</div>
+          <div>
+            <h3>最初の課金が通った証拠 <span class="chip ok">staging＋テストモードで実証</span></h3>
+            <p>2026-08-28　テストカード <code>4242</code> で Checkout → <code>checkout-sync</code> 経由で staging <code>teams</code>（tenant-a）が <code>plan=pro / status=active / subscription_id=sub_…</code> に更新、ヘッダーの Pro バッジ表示を確認。テストアカウント <code>acct_1U9Jfm6rzF4xRk90</code>、価格 <code>price_1U9Ju76rzF4xRk90wIc1zFD5</code>（¥1,980/月）。</p>
+            <p>2026-08-29　synthetic webhook で継続課金の運用も検証：支払失敗 → past_due（Pro維持）→ 復活 → active、期末解約予約 → <code>cancel_at_period_end</code>、解約実行 → free。</p>
+            <p>本番モードでの「最初の1件」は <code>docs/release-checklist.md</code> の C（項番12〜18）。</p>
+          </div>
+        </li>
+
+        <li>
+          <div class="mk">④</div>
+          <div>
+            <h3>23回のふりかえり <span class="chip ok">完成</span></h3>
+            <p><code>docs/retrospective.md</code>：第1〜15回（Git×Railway 上級マスター）＋第16〜23回（SaaS本体編）の一覧、技術スタックの最終形、身についた4つの「型」。このページ下段にも要約を再掲。</p>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+    <section>
+      <p class="sec-label">Line items · 8</p>
+      <h2>積んだもの（第16〜23回）</h2>
+      <ol class="manifest">
+
+        <li>
+          <div class="no">16</div>
+          <div class="row-body">
+            <h3>マルチテナント設計</h3>
+            <p><code>teams</code> / <code>team_members</code> を新設し、全業務テーブルに <code>team_id</code>。RLS を team_id 単位に全面差し替え、サインアップで専用チームを自動生成。越境ゼロを SQL の <code>set_config</code> で実証。</p>
+            <div class="tags"><span class="tag mig-ok">006 本番適用済</span><span class="tag">RLS 全面改訂</span></div>
+          </div>
+        </li>
+
+        <li>
+          <div class="no">17</div>
+          <div class="row-body">
+            <h3>認証基盤</h3>
+            <p>パスワード再設定フロー、未確認メールの再送導線、Auth エラーの日本語化。ヘッダーに所属チーム＋ロール表示。owner / member で画面と RLS の両方を出し分け。</p>
+            <div class="tags"><span class="tag mig-ok">007 本番適用済</span><span class="tag">ロール権限</span></div>
+          </div>
+        </li>
+
+        <li>
+          <div class="no">18</div>
+          <div class="row-body">
+            <h3>課金① — Stripe 導入</h3>
+            <p>Free / Pro（¥1,980/月）。無料は商品 50 件までを DB トリガーで強制。Checkout・Webhook・カスタマーポータル。Webhook 遅延に強い verify-on-return（<code>checkout-sync</code>）。</p>
+            <div class="tags"><span class="tag mig-wait">008 staging のみ</span><span class="tag">Checkout / Webhook</span></div>
+          </div>
+        </li>
+
+        <li>
+          <div class="no">19</div>
+          <div class="row-body">
+            <h3>課金② — 継続課金の運用</h3>
+            <p>支払失敗 → past_due（猶予・Pro 維持）、復活 → active、期末解約予約、<code>deleted</code> → free。二重サブスク防止と解約イベント取り違えのバグも修正。</p>
+            <div class="tags"><span class="tag mig-wait">009 staging のみ</span><span class="tag">請求ライフサイクル</span></div>
+          </div>
+        </li>
+
+        <li>
+          <div class="no">20</div>
+          <div class="row-body">
+            <h3>プラン制限とメータリング</h3>
+            <p>CSV エクスポートを Pro 専用（機能ゲート）。AI チャットは無料 20 回 / 月、<code>use_ai_chat_quota</code> RPC で確認＋加算を 1 トランザクション。上限で <code>UpsellNote</code>（売上導線）。</p>
+            <div class="tags"><span class="tag mig-wait">010 未適用</span><span class="tag">機能ゲート / 従量</span></div>
+          </div>
+        </li>
+
+        <li>
+          <div class="no">21</div>
+          <div class="row-body">
+            <h3>SaaS セキュリティ堅牢化</h3>
+            <p>脅威リスト T1–T10。6 テーブルに <code>force RLS</code>、DB 固定ウィンドウのレート制限、改ざん不可の監査ログ（トリガー＋書込ポリシー無し）。本番で Webhook の skip-verify を無効化。</p>
+            <div class="tags"><span class="tag mig-wait">011 未適用</span><span class="tag">force RLS / 監査ログ</span></div>
+          </div>
+        </li>
+
+        <li>
+          <div class="no">22</div>
+          <div class="row-body">
+            <h3>監視・信頼性・サポート運用</h3>
+            <p><code>/api/health</code>（DB 疎通まで）、SLO 月 99.5%。商品 0 件のときの初回オンボーディングガイド。運営用管理画面（<code>ADMIN_EMAILS</code> サーバー判定・MRR・監査ログ）。サポート導線。</p>
+            <div class="tags"><span class="tag none">DB 変更なし</span><span class="tag">SLO / 運営画面</span></div>
+          </div>
+        </li>
+
+        <li>
+          <div class="no">23</div>
+          <div class="row-body">
+            <h3>市場リリース総合演習</h3>
+            <p>利用規約・プライバシー・特商法のたたき台＋アプリ内表示（<code>?legal=</code>）、同意文言。本番切替の安全な順番（<code>docs/release-checklist.md</code>）。23 回のふりかえり。</p>
+            <div class="tags"><span class="tag none">DB 変更なし</span><span class="tag">法務 3 点 + 手順書</span></div>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+    <section>
+      <p class="sec-label">Retained</p>
+      <h2>身についた「型」</h2>
+      <div class="kata">
+        <div><b>01</b><span><em>staging で先に確かめてから production。</em> DB マイグレーションも Stripe も監視も、同じ順番で。</span></div>
+        <div><b>02</b><span><em>強制は DB 側、案内はフロント。</em> RLS・トリガー・RPC で越えられない線を引き、UI はその手前で親切にする。</span></div>
+        <div><b>03</b><span><em>壊さず出す仕組み。</em> ブランチ保護 ＋ CI ゲート ＋ 無停止デプロイ ＋ ロールバック手順 ＋ 監視。</span></div>
+        <div><b>04</b><span><em>SaaS は信頼商売。</em> テナント越境ゼロ・レート制限・監査ログ・法務は、出す前の必須装備。</span></div>
+      </div>
+    </section>
+
+    <section>
+      <p class="sec-label">Pending · ①③ を本物にするために残る手作業</p>
+      <h2>本番リリースに残る作業</h2>
+      <div class="col todo">
+        <ul class="check">
+          <li>PR #15 を master にマージ（CI 緑を確認）</li>
+          <li><code>008</code>–<code>011</code> を staging → production の順で適用</li>
+          <li>Supabase 本番の Auth URL / Redirect URLs を本番ドメインに</li>
+          <li>独自ドメイン ＋ SSL（Let's Encrypt）</li>
+          <li>Stripe 本番モード：本番の商品・価格・<code>sk_live</code>・<code>whsec</code> を取得</li>
+          <li>Vercel 本番 env を設定（ADMIN_EMAILS 含む・<code>STRIPE_WEBHOOK_SKIP_VERIFY</code> は入れない）</li>
+          <li>Stripe 本番 Webhook を <code>本番URL/api/stripe-webhook</code> に登録</li>
+          <li>Uptime Kuma の監視先を <code>/api/health</code> へ、通知を有効化</li>
+          <li><code>SUPPORT_EMAIL</code> と法務の事業者情報を実在の値に差替</li>
+          <li>ローカル <code>.env</code> を <code>.env.bak</code> から復元</li>
+          <li>チャットに平文で貼った <code>sk_test</code> キーをローテーション</li>
+          <li>本番で「登録 → Pro課金 → 有料機能 → 解約」を 1 件通す</li>
+        </ul>
+      </div>
+      <p class="note">順番の詳細は <code>docs/release-checklist.md</code>（A. 法務 → B. 本番切替 → C. 最初の 1 件 → D. 完了の証拠）。これが済めば提出 ① と ③ が本物に差し替わり、市場リリース修了となる。</p>
+    </section>
+
+  </div>
+</div>
+
+<footer>
+  <span>クロードコード部 · SaaS本体編 修了</span>
+  <span>Git×Railway 上級マスター 1–15 ＋ SaaS本体編 16–23 &nbsp;=&nbsp; 全23回 🏆</span>
+</footer>
