@@ -146,6 +146,12 @@ async function recordMovement(productId, change, note, teamId) {
   if (error) throw error
 }
 
+// 一覧・検索の1回の取得件数の上限。
+// これが無いと、商品が1万件・10万件に増えたときに毎回全件をネットワーク越しに
+// 転送してテーブル全行をDOM描画することになり、件数に比例して重くなる(O(n))。
+// 将来ページネーションUIを付けるまでの安全弁として、まず上限だけ設ける。
+const LIST_PAGE_SIZE = 200
+
 // 在庫一覧を取得（商品名・バーコード・カテゴリで検索可能、カテゴリ絞り込み・並び替え可能）
 // sortOrder: 'newest'（新しい順） | 'oldest'（古い順） | 'name'（名前順・デフォルト）
 // includeArchived: true の場合、非表示にした商品も含める
@@ -153,6 +159,7 @@ export async function listStock(searchText = '', sortOrder = 'name', category = 
   let query = supabase
     .from('products')
     .select('id, barcode, name, category, created_at, archived_at, stock_items(quantity)')
+    .range(0, LIST_PAGE_SIZE - 1)
 
   if (!includeArchived) {
     query = query.is('archived_at', null)
