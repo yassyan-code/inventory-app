@@ -16,6 +16,9 @@ create index if not exists idx_products_barcode
 
 `barcode` 単独の索引を追加し、複合索引に依存せず直接引けるようにした（`supabase/013_transactions_and_barcode_index.sql`）。staging → production の順で `supabase db push` を適用。
 
+**staging での実測（EXPLAIN ANALYZE）**
+staging（`rhowcziknvabdranlhvf`）で `explain analyze select * from products where barcode = '...'` を索引の追加前後で実行して比較した。結果はどちらも `Seq Scan on products`（実行時間 0.1ms 前後）で、体感差はゼロだった。理由は `products` の全行数が現状わずか4行しかなく、この規模ではオプティマイザが索引を使わずフルスキャンする方をコストが低いと判断するため（索引が「効いていない」のではなく、まだ「使う理由がない」規模ということ）。したがって今回の索引追加は今すぐ速くなるためではなく、商品数が数千〜数万件規模に増えたときに `Seq Scan` のコストが `Index Scan` を上回る局面に備えた予防的な対応、という位置づけになる。
+
 ## 2. トランザクション化（lost update と半端な書き込みの防止）
 
 **見つけた問題**
