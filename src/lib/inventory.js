@@ -90,60 +90,38 @@ function extractQuantity(stockItems) {
 }
 
 // 新規商品を登録し、初期在庫数を設定する
+// products→stock_items→stock_movementsの3件書き込みをDB関数(adjust_stockと同様に
+// 1トランザクション)にまとめ、途中失敗による「stock_itemsの無い商品」を防ぐ
 export async function createProduct(barcode, name, initialQuantity = 0, category = '') {
   const teamId = await getCurrentTeamId()
 
-  const { data: product, error: productError } = await supabase
-    .from('products')
-    .insert({ barcode, name, category: category || null, team_id: teamId })
-    .select()
-    .single()
+  const { data: product, error } = await supabase.rpc('create_product_with_stock', {
+    p_team_id: teamId,
+    p_barcode: barcode,
+    p_name: name,
+    p_category: category || '',
+    p_initial_quantity: initialQuantity,
+  })
 
-  if (productError) throw productError
-
-  const { error: stockError } = await supabase
-    .from('stock_items')
-    .insert({ product_id: product.id, quantity: initialQuantity, team_id: teamId })
-
-  if (stockError) throw stockError
-
-  if (initialQuantity !== 0) {
-    await recordMovement(product.id, initialQuantity, '初期登録', teamId)
-  }
-
+  if (error) throw error
   return product
 }
 
 // 在庫数を増減させる（change は正=入庫 / 負=出庫）
+// DB関数 adjust_stock 内で "quantity = quantity + change" を1トランザクションで
+// 実行するため、同時更新のlost updateと、更新済みなのに履歴だけ失敗する状態を防ぐ
 export async function adjustQuantity(productId, change, note = '') {
-  const { data: current, error: fetchError } = await supabase
-    .from('stock_items')
-    .select('quantity')
-    .eq('product_id', productId)
-    .single()
-
-  if (fetchError) throw fetchError
-
-  const newQuantity = current.quantity + change
-
-  const { error: updateError } = await supabase
-    .from('stock_items')
-    .update({ quantity: newQuantity })
-    .eq('product_id', productId)
-
-  if (updateError) throw updateError
-
   const teamId = await getCurrentTeamId()
-  await recordMovement(productId, change, note, teamId)
 
-  return newQuantity
-}
+  const { data: newQuantity, error } = await supabase.rpc('adjust_stock', {
+    p_product_id: productId,
+    p_change: change,
+    p_note: note,
+    p_team_id: teamId,
+  })
 
-async function recordMovement(productId, change, note, teamId) {
-  const { error } = await supabase
-    .from('stock_movements')
-    .insert({ product_id: productId, change, note, team_id: teamId })
   if (error) throw error
+  return newQuantity
 }
 
 // 一覧・検索の1回の取得件数の上限。
