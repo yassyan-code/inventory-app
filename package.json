@@ -16,7 +16,8 @@
     "@zxing/browser": "^0.2.1",
     "@zxing/library": "^0.23.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

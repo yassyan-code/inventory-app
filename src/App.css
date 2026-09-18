@@ -258,6 +258,97 @@ button.link {
   color: #1d4ed8;
 }
 
+.plan-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.plan-badge--pro {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.plan-badge--alert {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.plan-controls__error {
+  color: #dc2626;
+  font-size: 0.7rem;
+}
+
+.checkout-banner {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.checkout-banner--success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.checkout-banner--alert {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.upsell-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  border-radius: 8px;
+}
+
+.upsell-note__msg {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.upsell-note__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.upsell-note__btn {
+  width: auto;
+  padding: 0.4rem 0.9rem;
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chat-usage {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  text-align: right;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -459,4 +550,127 @@ td {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 1rem;
+}
+
+/* --- 第22回: オンボーディング / 管理画面 / フッター --- */
+.onboarding {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a5f; /* ダークテーマでも薄い青背景に対して読めるよう明示 */
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+}
+.onboarding__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  color: #1e3a5f;
+}
+.onboarding strong,
+.onboarding b,
+.onboarding li {
+  color: #1e3a5f;
+}
+.onboarding__close {
+  width: auto;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #1e3a8a;
+}
+.onboarding__steps {
+  margin: 0.6rem 0 0.3rem;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+.onboarding__steps .link {
+  margin-left: 0.4rem;
+}
+.onboarding__hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: #3b5a7a;
+}
+
+.admin-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.85rem;
+}
+.admin-table-wrap {
+  overflow-x: auto;
+}
+.admin-subhead {
+  font-size: 0.95rem;
+  margin: 1.2rem 0 0.4rem;
+}
+.admin-audit {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.admin-audit code {
+  background: #f1f5f9;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+
+.app-footer {
+  margin-top: 1.5rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.8rem;
+  text-align: center;
+  opacity: 0.85;
+}
+.app-footer a {
+  color: #2563eb;
+}
+.app-footer__sep {
+  margin: 0 0.5rem;
+  opacity: 0.5;
+}
+
+/* --- 第23回: 法務ページ --- */
+.legal-view {
+  text-align: left;
+  width: 100%;
+}
+.legal-view h1 {
+  font-size: 1.3rem;
+  margin: 0.75rem 0;
+}
+.legal-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  background: #f8fafc;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+}
+.legal-consent {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  max-width: 320px;
+  margin: 0.5rem auto 0;
+}
+.legal-consent a {
+  color: #2563eb;
+  margin: 0 0.15rem;
 }

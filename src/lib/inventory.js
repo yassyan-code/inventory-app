@@ -28,7 +28,7 @@ export async function getMyMembership() {
 
   const { data, error } = await supabase
     .from('team_members')
-    .select('team_id, role, teams(name)')
+    .select('team_id, role, teams(name, plan, plan_status, cancel_at_period_end, current_period_end)')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
@@ -36,12 +36,26 @@ export async function getMyMembership() {
   if (error) throw error
   if (!data) throw new Error('所属チームが見つかりません')
 
+  const t = data.teams ?? {}
+  const plan = t.plan ?? 'free'
+  const planStatus = t.plan_status ?? null
+
   return {
     teamId: data.team_id,
-    teamName: data.teams?.name ?? 'マイチーム',
+    teamName: t.name ?? 'マイチーム',
     // owner を管理者、それ以外を一般ユーザー扱いにする
     role: data.role === 'owner' ? 'owner' : 'member',
     isAdmin: data.role === 'owner',
+    plan,
+    planStatus,
+    cancelAtPeriodEnd: !!t.cancel_at_period_end,
+    currentPeriodEnd: t.current_period_end ?? null,
+    // Pro 機能が使えるか（past_due は猶予中なので使わせる）
+    isPro: plan === 'pro' && ['active', 'trialing', 'past_due'].includes(planStatus),
+    // 支払い失敗の猶予中
+    pastDue: planStatus === 'past_due',
+    // 期末解約が予約されている
+    scheduledCancel: plan === 'pro' && !!t.cancel_at_period_end,
     email: user.email,
   }
 }
@@ -76,61 +90,45 @@ function extractQuantity(stockItems) {
 }
 
 // 新規商品を登録し、初期在庫数を設定する
+// products→stock_items→stock_movementsの3件書き込みをDB関数(adjust_stockと同様に
+// 1トランザクション)にまとめ、途中失敗による「stock_itemsの無い商品」を防ぐ
 export async function createProduct(barcode, name, initialQuantity = 0, category = '') {
   const teamId = await getCurrentTeamId()
 
-  const { data: product, error: productError } = await supabase
-    .from('products')
-    .insert({ barcode, name, category: category || null, team_id: teamId })
-    .select()
-    .single()
+  const { data: product, error } = await supabase.rpc('create_product_with_stock', {
+    p_team_id: teamId,
+    p_barcode: barcode,
+    p_name: name,
+    p_category: category || '',
+    p_initial_quantity: initialQuantity,
+  })
 
-  if (productError) throw productError
-
-  const { error: stockError } = await supabase
-    .from('stock_items')
-    .insert({ product_id: product.id, quantity: initialQuantity, team_id: teamId })
-
-  if (stockError) throw stockError
-
-  if (initialQuantity !== 0) {
-    await recordMovement(product.id, initialQuantity, '初期登録', teamId)
-  }
-
+  if (error) throw error
   return product
 }
 
 // 在庫数を増減させる（change は正=入庫 / 負=出庫）
+// DB関数 adjust_stock 内で "quantity = quantity + change" を1トランザクションで
+// 実行するため、同時更新のlost updateと、更新済みなのに履歴だけ失敗する状態を防ぐ
 export async function adjustQuantity(productId, change, note = '') {
-  const { data: current, error: fetchError } = await supabase
-    .from('stock_items')
-    .select('quantity')
-    .eq('product_id', productId)
-    .single()
-
-  if (fetchError) throw fetchError
-
-  const newQuantity = current.quantity + change
-
-  const { error: updateError } = await supabase
-    .from('stock_items')
-    .update({ quantity: newQuantity })
-    .eq('product_id', productId)
-
-  if (updateError) throw updateError
-
   const teamId = await getCurrentTeamId()
-  await recordMovement(productId, change, note, teamId)
 
+  const { data: newQuantity, error } = await supabase.rpc('adjust_stock', {
+    p_product_id: productId,
+    p_change: change,
+    p_note: note,
+    p_team_id: teamId,
+  })
+
+  if (error) throw error
   return newQuantity
 }
 
-async function recordMovement(productId, change, note, teamId) {
-  const { error } = await supabase
-    .from('stock_movements')
-    .insert({ product_id: productId, change, note, team_id: teamId })
-  if (error) throw error
-}
+// 一覧・検索の1回の取得件数の上限。
+// これが無いと、商品が1万件・10万件に増えたときに毎回全件をネットワーク越しに
+// 転送してテーブル全行をDOM描画することになり、件数に比例して重くなる(O(n))。
+// 将来ページネーションUIを付けるまでの安全弁として、まず上限だけ設ける。
+const LIST_PAGE_SIZE = 200
 
 // 在庫一覧を取得（商品名・バーコード・カテゴリで検索可能、カテゴリ絞り込み・並び替え可能）
 // sortOrder: 'newest'（新しい順） | 'oldest'（古い順） | 'name'（名前順・デフォルト）
@@ -139,6 +137,7 @@ export async function listStock(searchText = '', sortOrder = 'name', category = 
   let query = supabase
     .from('products')
     .select('id, barcode, name, category, created_at, archived_at, stock_items(quantity)')
+    .range(0, LIST_PAGE_SIZE - 1)
 
   if (!includeArchived) {
     query = query.is('archived_at', null)
@@ -218,4 +217,15 @@ export async function listCategories() {
 
   const unique = [...new Set((data ?? []).map((d) => d.category).filter(Boolean))]
   return unique.sort((a, b) => a.localeCompare(b, 'ja'))
+}
+
+// 自チームの（非表示でない）商品数。オンボーディングの進捗判定に使う。
+export async function countProducts() {
+  const { count, error } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .is('archived_at', null)
+
+  if (error) throw error
+  return count ?? 0
 }
