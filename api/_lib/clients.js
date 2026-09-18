@@ -4,8 +4,16 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-06-20',
+// Stripeを使わない関数（/api/items等）もclients.jsをimportするため、
+// モジュール読み込み時にSTRIPE_SECRET_KEY未設定で即クラッシュしないよう遅延初期化する。
+let _stripe
+export const stripe = new Proxy({}, {
+  get(_target, prop) {
+    if (!_stripe) {
+      _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' })
+    }
+    return _stripe[prop]
+  },
 })
 
 // サーバー専用の Supabase URL。ブラウザ用と同じ値だが VITE_ を付けない変数でも受ける。
