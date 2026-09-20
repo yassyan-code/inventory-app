@@ -75,8 +75,22 @@ export default async function handler(req, res) {
     return
   }
 
+  // ここまでの検証(認証・レート制限・利用枠)は全てJSONで即レス。
+  // ここから先はClaudeの生成そのもの(数秒〜十数秒かかる重い処理)なので、
+  // 完了を待って一括で返すのではなく、SSE(text/event-stream)で
+  // 生成できた分から順に画面へ流す。ユーザーは最初の一文字が届いた時点で
+  // 「動いている」と分かり、応答全体を待つ間ブラウザが固まったように
+  // 見えなくなる。
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+  })
+
+  const send = (payload) => res.write(`data: ${JSON.stringify(payload)}\n\n`)
+
   try {
-    const response = await client.messages.create({
+    const stream = client.messages.stream({
       model: 'claude-opus-5',
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
@@ -86,13 +100,14 @@ export default async function handler(req, res) {
       messages,
     })
 
-    const textBlock = response.content.find((block) => block.type === 'text')
-    res.status(200).json({
-      reply: textBlock?.text ?? '',
-      usage: { count: quota.count, limit: quota.limit },
-    })
+    stream.on('text', (delta) => send({ delta }))
+    await stream.finalMessage()
+
+    send({ usage: { count: quota.count, limit: quota.limit } })
   } catch (err) {
     console.error('[api/chat] エラー', err)
-    res.status(500).json({ error: 'チャットの応答取得に失敗しました' })
+    send({ error: 'チャットの応答取得に失敗しました' })
+  } finally {
+    res.end()
   }
 }

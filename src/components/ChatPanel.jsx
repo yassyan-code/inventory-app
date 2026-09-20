@@ -10,6 +10,8 @@ export default function ChatPanel({ membership }) {
   const [messages, setMessages] = useState([]) // [{ role: 'user' | 'assistant', content: string }]
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  // 「考え中...」は最初のトークンが届くまでだけ表示する（届いた後は本文が伸びていく様子で分かる）
+  const [waitingFirstToken, setWaitingFirstToken] = useState(false)
   const [error, setError] = useState('')
   const [usage, setUsage] = useState(null) // { count, limit } / limit=null は無制限
   const [quotaHit, setQuotaHit] = useState(false)
@@ -36,6 +38,7 @@ export default function ChatPanel({ membership }) {
     setMessages(nextMessages)
     setInput('')
     setLoading(true)
+    setWaitingFirstToken(true)
     setError('')
 
     try {
@@ -49,24 +52,62 @@ export default function ChatPanel({ membership }) {
         body: JSON.stringify({ messages: nextMessages }),
       })
 
-      const data = await res.json().catch(() => ({}))
-
-      if (res.status === 429 && data.code === 'quota_exceeded') {
-        setQuotaHit(true)
-        if (data.usage) setUsage(data.usage)
-        // 直前に足したユーザー発言は残す（送信済み扱い）
-        return
-      }
+      // 認証/レート制限/利用枠エラーはここでJSONとして即返る（ストリーミング開始前）
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (res.status === 429 && data.code === 'quota_exceeded') {
+          setQuotaHit(true)
+          if (data.usage) setUsage(data.usage)
+          // 直前に足したユーザー発言は残す（送信済み扱い）
+          return
+        }
         throw new Error(data.error || `サーバーエラー (${res.status})`)
       }
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }])
-      if (data.usage) setUsage(data.usage)
+      // ここからは検証を通過した本番の応答＝SSE。生成できた分から順に描画し、
+      // 最初の一文字が届いた時点で「考え中...」を消す（=画面を止めない）。
+      let assistantText = ''
+      let addedBubble = false
+      let buffer = ''
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() ?? ''
+
+        for (const event of events) {
+          if (!event.startsWith('data: ')) continue
+          const payload = JSON.parse(event.slice(6))
+
+          if (payload.delta) {
+            assistantText += payload.delta
+            if (!addedBubble) {
+              addedBubble = true
+              setWaitingFirstToken(false)
+              setMessages((prev) => [...prev, { role: 'assistant', content: assistantText }])
+            } else {
+              setMessages((prev) => {
+                const next = [...prev]
+                next[next.length - 1] = { role: 'assistant', content: assistantText }
+                return next
+              })
+            }
+          } else if (payload.usage) {
+            setUsage(payload.usage)
+          } else if (payload.error) {
+            throw new Error(payload.error)
+          }
+        }
+      }
     } catch (err) {
       setError('エラー: ' + err.message)
     } finally {
       setLoading(false)
+      setWaitingFirstToken(false)
     }
   }
 
@@ -92,7 +133,7 @@ export default function ChatPanel({ membership }) {
             <p>{m.content}</p>
           </div>
         ))}
-        {loading && <p className="chat-empty">考え中...</p>}
+        {waitingFirstToken && <p className="chat-empty">考え中...</p>}
       </div>
 
       {quotaHit && (
