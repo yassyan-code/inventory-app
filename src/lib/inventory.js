@@ -1,8 +1,25 @@
 import { supabase } from './supabaseClient'
 
+// getCurrentTeamId()のセッション内キャッシュ。adjustQuantity/createProductは
+// 呼ばれるたびに(スキャン1回ごとに)team_idを取り直しており、計測すると
+// team_members照会だけで平均245ms(コールドスタート時949ms)かかっていた。
+// ログイン中にteam_idが変わることは無い前提のため、一度取得したら使い回す。
+let cachedTeamId = null
+// listCategories()のキャッシュ。カテゴリの追加/変更があった時だけ無効化する。
+let cachedCategories = null
+
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+    cachedTeamId = null
+    cachedCategories = null
+  }
+})
+
 // ログイン中ユーザーが所属するチームIDを取得する
 // (現状は1ユーザー1チームを前提。新規サインアップ時にトリガーが自動でチームを作る)
 export async function getCurrentTeamId() {
+  if (cachedTeamId) return cachedTeamId
+
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('未ログインです')
@@ -16,7 +33,8 @@ export async function getCurrentTeamId() {
 
   if (error) throw error
   if (!data) throw new Error('所属チームが見つかりません')
-  return data.team_id
+  cachedTeamId = data.team_id
+  return cachedTeamId
 }
 
 // ログイン中ユーザーの所属情報（チームID・チーム名・ロール）をまとめて取得する。
@@ -104,6 +122,7 @@ export async function createProduct(barcode, name, initialQuantity = 0, category
   })
 
   if (error) throw error
+  cachedCategories = null // 新しいカテゴリが増えた可能性があるので破棄
   return product
 }
 
@@ -204,10 +223,15 @@ export async function updateCategory(productId, category) {
     .eq('id', productId)
 
   if (error) throw error
+  cachedCategories = null // カテゴリ集合が変わり得るのでキャッシュを破棄
 }
 
 // 登録済みのカテゴリ一覧（絞り込みドロップダウン用、重複なし・昇順）
+// 商品登録/カテゴリ編集のたびに毎回全商品をスキャンして重複除去していたが、
+// カテゴリの集合は商品登録・カテゴリ編集の時だけ変わるため結果をキャッシュする。
 export async function listCategories() {
+  if (cachedCategories) return cachedCategories
+
   const { data, error } = await supabase
     .from('products')
     .select('category')
@@ -216,7 +240,8 @@ export async function listCategories() {
   if (error) throw error
 
   const unique = [...new Set((data ?? []).map((d) => d.category).filter(Boolean))]
-  return unique.sort((a, b) => a.localeCompare(b, 'ja'))
+  cachedCategories = unique.sort((a, b) => a.localeCompare(b, 'ja'))
+  return cachedCategories
 }
 
 // 自チームの（非表示でない）商品数。オンボーディングの進捗判定に使う。
