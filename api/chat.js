@@ -1,10 +1,19 @@
 // Claude API を使ったチャット機能のサーバーレス関数(Vercel Functions)。
 // APIキーはこのファイル(サーバー側)でのみ使用し、ブラウザには一切渡らない。
-// フロントエンドは /api/chat に { messages: [...] } をPOSTするだけでよい。
+// フロントエンドは /api/chat に { messages: [...] } をPOSTする（要ログイン）。
+//
+// 第20回: メータリング。無料プランは AIチャット 月20回まで。
+//   use_ai_chat_quota RPC で「チェック＋加算」を1回で行い、上限なら 429 を返す。
 
 import Anthropic from '@anthropic-ai/sdk'
+import { getUserTeam } from './_lib/clients.js'
+import { enforceRateLimit } from './_lib/ratelimit.js'
 
 const client = new Anthropic() // ANTHROPIC_API_KEY 環境変数から自動で読み込まれる
+
+// サーバー側の入力上限（フロントのバリデーションを信用しない）
+const MAX_MESSAGES = 50
+const MAX_CHARS_PER_MESSAGE = 4000
 
 const SYSTEM_PROMPT =
   'あなたは在庫管理アプリに組み込まれたアシスタントです。バーコード登録・在庫数の増減・在庫一覧の使い方など、' +
@@ -17,14 +26,71 @@ export default async function handler(req, res) {
   }
 
   const { messages } = req.body ?? {}
-
   if (!Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ error: 'messages is required' })
     return
   }
+  if (messages.length > MAX_MESSAGES) {
+    res.status(400).json({ error: 'too many messages' })
+    return
+  }
+  if (
+    messages.some(
+      (m) => typeof m?.content !== 'string' || m.content.length > MAX_CHARS_PER_MESSAGE
+    )
+  ) {
+    res.status(400).json({ error: 'message too long' })
+    return
+  }
+
+  // ログイン必須（＋どのチームの利用枠を消費するか特定）
+  const auth = await getUserTeam(req)
+  if (auth.error) {
+    res.status(auth.status).json({ error: auth.error })
+    return
+  }
+
+  // レート制限: 1ユーザー 60秒あたり 10 リクエストまで
+  const rl = await enforceRateLimit(auth.anon, `chat:${auth.user.id}`, 10, 60)
+  if (!rl.ok) {
+    res.status(429).json({ error: 'rate_limited', retryAfter: rl.retryAfter })
+    return
+  }
+
+  // 利用枠を1回消費（無料は月20回、Proは無制限）
+  const { data: quota, error: quotaErr } = await auth.anon.rpc('use_ai_chat_quota', {
+    p_team_id: auth.teamId,
+  })
+  if (quotaErr) {
+    console.error('[api/chat] quota rpc error', quotaErr)
+    res.status(500).json({ error: '利用枠の確認に失敗しました' })
+    return
+  }
+  if (!quota.allowed) {
+    res.status(429).json({
+      error: 'quota_exceeded',
+      code: 'quota_exceeded',
+      usage: { count: quota.count, limit: quota.limit },
+    })
+    return
+  }
+
+  // ここまでの検証(認証・レート制限・利用枠)は全てJSONで即レス。
+  // ここから先はClaudeの生成そのもの(数秒〜十数秒かかる重い処理)なので、
+  // 完了を待って一括で返すのではなく、SSE(text/event-stream)で
+  // 生成できた分から順に画面へ流す。ユーザーは最初の一文字が届いた時点で
+  // 「動いている」と分かり、応答全体を待つ間ブラウザが固まったように
+  // 見えなくなる。
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+  })
+
+  const send = (payload) => res.write(`data: ${JSON.stringify(payload)}\n\n`)
 
   try {
-    const response = await client.messages.create({
+    const stream = client.messages.stream({
       model: 'claude-opus-5',
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
@@ -34,10 +100,14 @@ export default async function handler(req, res) {
       messages,
     })
 
-    const textBlock = response.content.find((block) => block.type === 'text')
-    res.status(200).json({ reply: textBlock?.text ?? '' })
+    stream.on('text', (delta) => send({ delta }))
+    await stream.finalMessage()
+
+    send({ usage: { count: quota.count, limit: quota.limit } })
   } catch (err) {
     console.error('[api/chat] エラー', err)
-    res.status(500).json({ error: 'チャットの応答取得に失敗しました' })
+    send({ error: 'チャットの応答取得に失敗しました' })
+  } finally {
+    res.end()
   }
 }

@@ -8,6 +8,7 @@ import {
   unarchiveProduct,
 } from '../lib/inventory'
 import { toCsv, downloadCsv } from '../lib/csv'
+import UpsellNote from './UpsellNote'
 
 const CSV_HEADERS = [
   { key: 'name', label: '商品名' },
@@ -25,8 +26,12 @@ const formatDate = (iso) => {
   return new Date(iso).toLocaleDateString('ja-JP')
 }
 
-export default function InventoryList({ refreshKey, isAdmin = false }) {
-  const [items, setItems] = useState([])
+export default function InventoryList({ refreshKey, isAdmin = false, isPro = false }) {
+  // items は id をキーにした Map（配列ではない）。
+  // 「+1/-1・非表示・カテゴリ編集」のたびに1件だけをid検索して書き換えるので、
+  // 配列だと毎回 .map()/.filter() で全件を舐める(O(n))。Mapならid検索が.get()/.set()で
+  // 一発(O(1))になり、一覧が増えても操作の重さが増えない。表示順は取得時のまま保たれる。
+  const [items, setItems] = useState(new Map())
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -44,7 +49,7 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
     setError('')
     try {
       const data = await listStock(text, order, cat, includeArchived)
-      setItems(data)
+      setItems(new Map(data.map((item) => [item.id, item])))
     } catch (err) {
       setError('取得エラー: ' + err.message)
     } finally {
@@ -76,11 +81,17 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
     try {
       await archiveProduct(item.id)
       if (showArchived) {
-        setItems((prev) =>
-          prev.map((it) => (it.id === item.id ? { ...it, archivedAt: new Date().toISOString() } : it))
-        )
+        setItems((prev) => {
+          const next = new Map(prev)
+          next.set(item.id, { ...prev.get(item.id), archivedAt: new Date().toISOString() })
+          return next
+        })
       } else {
-        setItems((prev) => prev.filter((it) => it.id !== item.id))
+        setItems((prev) => {
+          const next = new Map(prev)
+          next.delete(item.id)
+          return next
+        })
       }
     } catch (err) {
       setError('非表示エラー: ' + err.message)
@@ -88,7 +99,7 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
   }
 
   const handleExportCsv = () => {
-    const rows = items.map((item) => ({
+    const rows = [...items.values()].map((item) => ({
       name: item.name,
       category: item.category || '',
       barcode: item.barcode,
@@ -104,9 +115,11 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
   const handleUnarchive = async (item) => {
     try {
       await unarchiveProduct(item.id)
-      setItems((prev) =>
-        prev.map((it) => (it.id === item.id ? { ...it, archivedAt: null } : it))
-      )
+      setItems((prev) => {
+        const next = new Map(prev)
+        next.set(item.id, { ...prev.get(item.id), archivedAt: null })
+        return next
+      })
     } catch (err) {
       setError('復元エラー: ' + err.message)
     }
@@ -118,9 +131,11 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
     setAdjustingId(item.id)
     try {
       const newQty = await adjustQuantity(item.id, change, change > 0 ? '入庫' : '出庫')
-      setItems((prev) =>
-        prev.map((it) => (it.id === item.id ? { ...it, quantity: newQty } : it))
-      )
+      setItems((prev) => {
+        const next = new Map(prev)
+        next.set(item.id, { ...prev.get(item.id), quantity: newQty })
+        return next
+      })
     } catch (err) {
       setError('更新エラー: ' + err.message)
     } finally {
@@ -148,9 +163,11 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
     }
     try {
       await updateCategory(item.id, newCategory)
-      setItems((prev) =>
-        prev.map((it) => (it.id === item.id ? { ...it, category: newCategory || null } : it))
-      )
+      setItems((prev) => {
+        const next = new Map(prev)
+        next.set(item.id, { ...prev.get(item.id), category: newCategory || null })
+        return next
+      })
       listCategories().then(setCategoryOptions).catch(() => {})
     } catch (err) {
       setError('カテゴリ更新エラー: ' + err.message)
@@ -217,21 +234,34 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
           />
           非表示の商品も表示する
         </label>
-        <button
-          className="secondary"
-          onClick={handleExportCsv}
-          disabled={items.length === 0}
-        >
-          CSVエクスポート
-        </button>
+        {isPro ? (
+          <button
+            className="secondary"
+            onClick={handleExportCsv}
+            disabled={items.size === 0}
+          >
+            CSVエクスポート
+          </button>
+        ) : (
+          <button className="secondary" disabled title="Proプラン限定">
+            🔒 CSVエクスポート
+          </button>
+        )}
       </div>
+
+      {!isPro && (
+        <UpsellNote
+          isAdmin={isAdmin}
+          message="CSVエクスポートはProプラン限定の機能です。"
+        />
+      )}
 
       {loading && <p>読み込み中...</p>}
       {error && <p className="message">{error}</p>}
 
-      {!loading && items.length === 0 && <p>登録された商品がありません。</p>}
+      {!loading && items.size === 0 && <p>登録された商品がありません。</p>}
 
-      {!loading && items.length > 0 && (
+      {!loading && items.size > 0 && (
         <table>
           <thead>
             <tr>
@@ -245,7 +275,7 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
+            {[...items.values()].map((item) => (
               <tr key={item.id} className={item.archivedAt ? 'row--archived' : ''}>
                 <td>
                   {item.name}
