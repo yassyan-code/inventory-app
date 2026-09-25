@@ -12,6 +12,8 @@
 
 - Uptime Kumaの監視（https://uptime-kuma-production-faaa.up.railway.app）が本番URLへの疎通を定期チェックしている
 - ダウンを検知したら通知が飛ぶよう、Uptime Kuma側の通知設定(Discord/Slack/Email等、任意のもの)を有効化しておく
+- アプリ内のエラー（画面の描画失敗・未処理の例外）は Supabase の `error_logs` テーブルに記録される（`supabase/008_error_logs.sql`）。サイトが生きていても画面が壊れているケースはここで気づく。ダッシュボードの SQL エディタで確認:
+  `select created_at, source, message, url from error_logs order by created_at desc limit 50;`
 - 手動での一次確認: `curl -o /dev/null -s -w "%{http_code}\n" https://inventory-app-production-64fe.up.railway.app`
 
 ## ② 切り分け
