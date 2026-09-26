@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
 
 const MAX_MESSAGE_LENGTH = 2000
 
@@ -24,13 +25,21 @@ export default function ChatPanel() {
     setError('')
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token ?? ''}`,
+        },
         body: JSON.stringify({ messages: nextMessages }),
       })
 
       if (!res.ok) {
+        if (res.status === 401) throw new Error('ログインの有効期限が切れました。再ログインしてください')
+        if (res.status === 429) throw new Error('短時間に送信しすぎです。しばらくしてからお試しください')
         throw new Error(`サーバーエラー (${res.status})`)
       }
 
