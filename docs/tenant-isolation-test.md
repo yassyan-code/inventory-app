@@ -48,10 +48,27 @@ values ('9999999999999', '越境テスト', '<tenant-bのteam_id>');
 reset role;
 ```
 
+## テスト③: 他チームのproduct_idを使った書き込みを試みる（`010_stock_product_team_consistency.sql`適用後）
+
+`team_id`は自分の所属チームでも、`product_id`が別チームの商品だと拒否されることを確認する。
+
+```sql
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"<tenant-aのUUID>","role":"authenticated"}';
+
+-- <tenant-bの商品ID> は、テスト①でtenant-bが登録した「Bのバナナ」のidに置き換える
+insert into stock_movements (product_id, team_id, change, note)
+values ('<tenant-bの商品ID>', '<tenant-aのteam_id>', 1, '越境テスト');
+-- 期待結果: new row violates row-level security policy でエラーになる
+
+reset role;
+```
+
 ## 判定基準
 
 - テスト①: 互いの商品がアプリ上で一切見えない
 - テスト②-2: `select`が自分のチームの行だけを返す
 - テスト②-3: 他チームへの`insert`が RLS違反でエラーになる
+- テスト③: 自チームのteam_id×他チームのproduct_idの組み合わせでの`insert`がRLS違反でエラーになる
 
-上記3つがすべて成立すれば、越境ゼロが設計として保証されている。
+上記4つがすべて成立すれば、越境ゼロが設計として保証されている。
