@@ -9,7 +9,7 @@
 - **アプリ名**: 在庫管理アプリ
 - **目的**: バーコードをスキャンするだけで、商品の登録・在庫数の入出庫記録を行える
 - **利用形態**: 複数人・複数端末でクラウド上のデータを共有（Supabaseアカウントでログインした人は全員同じ在庫データを見る）
-- **本番URL**: https://inventory-app-topaz-iota.vercel.app
+- **本番URL**: https://inventory-app-production-64fe.up.railway.app（Railway）
 - **対応環境**: スマホ（PWA、カメラでバーコード読取）／PC（USB/Bluetoothバーコードスキャナー対応）
 
 ## 2. 機能一覧
@@ -53,10 +53,14 @@
   - 列: 商品名・カテゴリ・バーコード・登録日・数量・状態
   - UTF-8 BOM付き（Excelでの文字化け対策）
 
-### 2.4 AIチャット（チャットタブ）
+### 2.4 AIチャット（チャットタブ）※本番(Railway)では現在非表示
 - Claude APIを使ったチャット機能。アプリの使い方などを質問できる
 - メッセージは2000文字以内（超過時は赤字メッセージ）
 - APIキーはサーバー側（Vercel Functions）のみで使用し、ブラウザには渡らない
+- 2026-09-27時点、本番(Railway)はDocker+nginxで静的配信のみのためVercel Functionsが動かず、
+  `App.jsx`の`CHAT_ENABLED`フラグでタブごと非表示にしている（コードは残っている）。
+  Railwayで動かすには、別のサーバー実行環境（Node常駐プロセス、Supabase Edge Functions等）への
+  作り直しが必要（詳しくは[引き継ぎメモ](handover.md)参照）
 
 ## 3. データモデル（Supabase / PostgreSQL）
 
@@ -97,7 +101,8 @@
 | サービス | 用途 |
 |---|---|
 | Supabase | 認証（Auth）、データベース（Postgres） |
-| Vercel | ホスティング、`master`ブランチへのpushで自動本番デプロイ、PR/他ブランチはプレビューデプロイ |
+| Railway | 本番ホスティング（Docker+nginx）。`master`ブランチへのpushで自動本番デプロイ |
+| Vercel | `master`へのpushで自動デプロイされるが、SSO保護が有効で一般ユーザーはアクセス不可。チャット機能(`/api/chat`)のみここで動作確認できる |
 | Yahoo!ショッピング商品検索API | 未登録バーコードの商品名自動取得（任意・未設定でも動作） |
 | Anthropic Claude API | チャット機能の応答生成 |
 
