@@ -33,6 +33,8 @@ inventory-app/
     003_add_archived.sql       追加マイグレーション（非表示フラグ）
   docs/
     manual.md / spec.md / handover.md  この3点セット
+    architecture.md                    全体構成図・データフロー・設計判断（第55回）
+    threat-model.md                    脅威モデル・対策一覧（第54回）
 ```
 
 ## 2. ローカル開発の始め方
