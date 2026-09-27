@@ -14,6 +14,11 @@ const TABS = {
   CHAT: 'chat',
 }
 
+// チャット機能(/api/chat)はVercel Functions前提の実装。
+// 本番(Railway, Docker+nginxで静的配信のみ)ではサーバー関数が動かず404/405になるため、
+// タブごと非表示にする(コードは残す。Railway対応の作り直しは別課題)。
+const CHAT_ENABLED = false
+
 // 再設定リンクで開かれたか（URL ハッシュに recovery トークンが載る）を初期判定する
 function hasRecoveryInUrl() {
   return /type=recovery/.test(window.location.hash)
@@ -132,12 +137,14 @@ function App() {
         >
           在庫一覧
         </button>
-        <button
-          className={tab === TABS.CHAT ? 'active' : ''}
-          onClick={() => setTab(TABS.CHAT)}
-        >
-          チャット
-        </button>
+        {CHAT_ENABLED && (
+          <button
+            className={tab === TABS.CHAT ? 'active' : ''}
+            onClick={() => setTab(TABS.CHAT)}
+          >
+            チャット
+          </button>
+        )}
       </nav>
 
       <main>
@@ -145,7 +152,7 @@ function App() {
           <RegisterPanel isAdmin={isAdmin} onChanged={() => setRefreshKey((k) => k + 1)} />
         )}
         {tab === TABS.LIST && <InventoryList isAdmin={isAdmin} refreshKey={refreshKey} />}
-        {tab === TABS.CHAT && <ChatPanel />}
+        {CHAT_ENABLED && tab === TABS.CHAT && <ChatPanel />}
       </main>
 
       <footer className="app-footer">CI/CD動作確認 v1</footer>

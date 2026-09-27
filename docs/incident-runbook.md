@@ -25,7 +25,7 @@
 | Railwayのデプロイ状況 | `railway deployment list --json` | 最新デプロイが`SUCCESS`か`FAILED`/`CRASHED`か |
 | Railwayのランタイムログ | `railway logs --service inventory-app --lines 200` | エラーの内容(コード起因か、DB接続断か) |
 | Supabase側 | https://supabase.com/dashboard/project/noygjyxinkriupwequvt | DB自体が落ちていないか、API制限に達していないか |
-| Vercel側 | Vercelダッシュボード | Vercel本番も同時に落ちているか(→コード起因の可能性が高い) |
+| Vercel側 | Vercelダッシュボード | 同じコードのVercelデプロイも落ちているか(→コード起因の切り分けに使える)。Vercelはユーザー向け本番ではない(SSO保護でアクセス不可)ので、疎通確認自体はしなくてよい |
 | GitHub Actions | `gh run list --branch master` | 直前のCIが本当に緑だったか(見落としがないか) |
 
 **Railway/Vercelの両方が同時に落ちている → コード側の問題（直前のマージが疑わしい）**

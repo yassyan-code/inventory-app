@@ -5,9 +5,16 @@
 ## 1. 全体構成
 
 - **フロントエンド**: Vite + React（PWA対応）。SPA、ルーティングライブラリは使わずタブ切り替えのみ
-- **バックエンド**: Vercel Functions（`api/chat.js`のみ。それ以外のデータ操作はフロントから直接Supabaseを呼んでいる）
+- **バックエンド**: `api/chat.js`（Vercel Functions）のみ。それ以外のデータ操作はフロントから直接Supabaseを呼んでいる
 - **DB/認証**: Supabase（Postgres + Auth）
-- **デプロイ**: Vercel。GitHub連携済みで、`master`へのpushで本番自動デプロイ、他ブランチ/PRはプレビューデプロイ
+- **デプロイ（本番）**: **Railway**。Dockerfile（2段階ビルド+nginx）でビルドし、静的ファイルのみ配信。
+  GitHub連携済みで`master`へのpushで本番自動デプロイ
+- **デプロイ（Vercel、補助的）**: 同じリポジトリがVercelにもGitHub連携で自動デプロイされるが、
+  SSO保護が有効で一般ユーザーはアクセスできない。**チャット機能(`/api/chat`)はVercel Functions前提の
+  実装のため、Railway本番では動かない**（`App.jsx`の`CHAT_ENABLED = false`でタブごと非表示にしている）。
+  Vercel環境ではチャットを含めて動作確認できるので、チャット周りを触るときはVercel側で確認する。
+  Railwayは以前から本番として稼働していたが、ドキュメント各所にVercelを本番と書いた古い記述が
+  残っていた（2026-09-27に気づいて修正）。「本番URL」は基本的にRailwayのものを正とする
 
 ```
 inventory-app/
@@ -61,14 +68,18 @@ READMEの「セットアップ手順」参照。要点だけ書くと:
 | `RegisterPanel.jsx` の入力バリデーション | `MAX_NAME_LENGTH`等の定数で上限を管理。DBのカラム長制限とは連動していないので、DB側の制約を変えたらここも合わせて見直す |
 | `api/chat.js` | フロント側でメッセージ長は制限しているが、APIを直接叩かれた場合のサーバー側の入力上限・レート制限は未実装。公開アプリとして本格運用するなら追加を検討 |
 | `App.css` の `.category-edit-trigger` | 過去に`background: none`だけだと背景色が透明にならずPCで文字が見えなくなる不具合があった。`background-color: transparent`を明示している。安易に消さないこと |
-| Vercel環境変数 | `.env`はgit管理外。ローカルとVercel本番の両方に`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` / `VITE_YAHOO_APP_ID`（任意） / `ANTHROPIC_API_KEY`（VITE_プレフィックスなし、サーバー専用）を設定する必要がある |
+| 環境変数 | `.env`はgit管理外。ローカル・Railway・Vercelそれぞれに`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` / `VITE_YAHOO_APP_ID`（任意）を設定する必要がある。`ANTHROPIC_API_KEY`（VITE_プレフィックスなし、サーバー専用）はVercel側のみ必要（チャットが動くのはVercelだけのため） |
 | LAN内IPアドレスでのアクセス | `http://192.168.x.x`はブラウザがセキュアコンテキストと見なさずカメラが動かない。動作確認は本番URL（https）かローカルの`https://localhost`を使う |
 
 ## 5. デプロイ・運用フロー
 
-- 機能ごとにブランチを切り、PRを作成 → レビュー（コメント） → `master`にマージ → 自動で本番デプロイ
+- 機能ごとにブランチを切り、PRを作成 → レビュー（コメント） → `master`にマージ → RailwayとVercelの両方に自動デプロイ
 - コンフリクトが起きた場合は、コンフリクト側のブランチで`git merge origin/master`しローカルで解消してからpush（過去の対応例: [関門⑧のPR #1, #2](https://github.com/yassyan-code/inventory-app/pulls?q=is%3Apr+is%3Aclosed)参照）
-- 手動デプロイしたい場合は `npx vercel --prod`
+- **マージ後は必ずRailwayのデプロイ結果（SUCCESS/FAILED）を確認すること**。GitHub ActionsのCIが通っても、
+  Railway側のビルド・ヘルスチェックが別途失敗することがある（2026-09-27、PR #17〜#24の7件が
+  ヘルスチェック失敗で本番に反映されていなかった実例あり。原因は`docs/threat-model.md`ではなく
+  `nginx.conf`の`listen`ポート固定。PR #25で修正）
+- 手動デプロイしたい場合、RailwayはCLIまたはダッシュボードの「Redeploy」。Vercelは `npx vercel --prod`
 
 ## 6. 既知の未対応・積み残し
 

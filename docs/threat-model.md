@@ -3,6 +3,11 @@
 「攻撃者ならどこを狙うか」の目で点検した結果。観点は 入力 / 認証 / 秘密 / 権限。
 点検日: 2026-09-27。対象: フロント(React) + `api/chat.js` + Supabase(Auth/RLS) + nginx。
 
+> **2026-09-27追記**: 本番はVercelではなく**Railway**だと判明（詳細は`handover.md`）。
+> `/api/chat`はVercel Functions前提のため、Railway本番ではチャット機能自体を無効化した
+> （`CHAT_ENABLED = false`）。よって脅威#1の対策は現状Vercel環境向けの防御になっている。
+> Railway本番でチャットを再開する際は、この脅威モデルを作り直した実装に対して見直すこと。
+
 ## 前提（守れている所）
 
 - 商品・在庫・履歴は RLS で `team_id` 分離済み（`006`）。書き込みは `owner` 限定（`007`）。
@@ -42,8 +47,10 @@ Vercel の環境変数に `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`（既�
 
 ## 塞いだ対策（#2）
 
-Vercel が実際の本番配信経路（GitHub連携で `master` push → 自動デプロイ）なので、`vercel.json` にヘッダーを追加。
-Docker/nginx 配信（自前ホスト向け）にも同内容を `nginx.conf` に追加し、経路によって守りが変わらないようにした。
+対策当時はVercelが本番だと思い込んでいたため`vercel.json`にヘッダーを追加したが、
+実際の本番はRailway（Docker/nginx配信）だった（2026-09-27判明）。幸い`nginx.conf`にも
+同内容を追加していたため、**結果的に**実本番も守られている。判断そのものは誤っていたが、
+「配信経路が複数あるなら両方に同じ対策を書く」という設計方針のおかげで実害はなかった。
 
 - `Content-Security-Policy`: `default-src 'self'` を基本に、実接続先だけ許可（Supabase・Yahoo!ショッピングAPI）。ビルド後の `dist/index.html` を確認し、インライン script/style が無いことを確かめた上で `unsafe-inline` は付けていない。
 - `X-Frame-Options: DENY` / `frame-ancestors 'none'`: クリックジャッキング対策（二重で指定）。
