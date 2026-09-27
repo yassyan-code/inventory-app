@@ -1,18 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const insert = vi.fn()
+const rpc = vi.fn()
 vi.mock('./supabaseClient', () => ({
   supabase: {
-    auth: { getSession: vi.fn(async () => ({ data: { session: { user: { id: 'u1' } } } })) },
-    from: vi.fn(() => ({ insert })),
+    rpc,
   },
 }))
 
 const { buildErrorRecord, logError, resetErrorLoggerState } = await import('./errorLogger')
 
 beforeEach(() => {
-  insert.mockReset()
-  insert.mockResolvedValue({ error: null })
+  rpc.mockReset()
+  rpc.mockResolvedValue({ error: null })
   resetErrorLoggerState()
 })
 
@@ -37,25 +36,27 @@ describe('buildErrorRecord', () => {
 })
 
 describe('logError', () => {
-  it('error_logs に user_id 付きで insert する', async () => {
+  it('DB関数 log_client_error 経由で記録する（user_idはクライアントから送らない）', async () => {
     await logError(new Error('boom'), 'react')
-    expect(insert).toHaveBeenCalledTimes(1)
-    expect(insert.mock.calls[0][0]).toMatchObject({ message: 'boom', source: 'react', user_id: 'u1' })
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc.mock.calls[0][0]).toBe('log_client_error')
+    expect(rpc.mock.calls[0][1]).toMatchObject({ p_message: 'boom', p_source: 'react' })
+    expect(rpc.mock.calls[0][1]).not.toHaveProperty('user_id')
   })
 
   it('同じエラーの連投は1回にまとめる', async () => {
     await logError(new Error('same'), 'react')
     await logError(new Error('same'), 'react')
-    expect(insert).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledTimes(1)
   })
 
   it('1セッションの送信数に上限がある', async () => {
     for (let i = 0; i < 30; i++) await logError(new Error(`e${i}`), 'react')
-    expect(insert).toHaveBeenCalledTimes(20)
+    expect(rpc).toHaveBeenCalledTimes(20)
   })
 
   it('記録に失敗しても例外を投げない', async () => {
-    insert.mockRejectedValue(new Error('db down'))
+    rpc.mockRejectedValue(new Error('db down'))
     await expect(logError(new Error('boom'), 'react')).resolves.toBeUndefined()
   })
 })

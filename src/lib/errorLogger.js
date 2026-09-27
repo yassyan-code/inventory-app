@@ -37,10 +37,16 @@ export async function logError(error, source = 'unknown') {
     lastSeen.set(key, now)
     sentCount += 1
 
-    const { data } = await supabase.auth.getSession()
-    record.user_id = data?.session?.user?.id ?? null
-
-    await supabase.from('error_logs').insert(record)
+    // テーブルへの直接insertは禁止されており、検証とレート制限を行うDB関数経由でのみ書き込める
+    // （anon keyは公開情報のため、直接APIを叩かれても同じ制限がかかるようにDB側で絞っている）。
+    // user_idはクライアントから送らず、DB側でJWTから取得させる。
+    await supabase.rpc('log_client_error', {
+      p_source: record.source,
+      p_message: record.message,
+      p_stack: record.stack,
+      p_url: record.url,
+      p_user_agent: record.user_agent,
+    })
   } catch {
     // 記録できなくても何もしない（エラー記録がエラーを生むのを避ける）
   }
