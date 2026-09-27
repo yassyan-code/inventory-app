@@ -1,5 +1,8 @@
 server {
-    listen 80;
+    # RailwayなどPaaSは実行時にランダムな$PORTへヘルスチェック/通信するため、
+    # 固定の80番ではなく環境変数から決める。ビルド時ではなく起動時にnginx公式イメージの
+    # docker-entrypoint.d(envsubst-on-templates)が、このファイルの${PORT}を実際の値に置換する。
+    listen ${PORT};
     server_name _;
     root /usr/share/nginx/html;
     index index.html;
