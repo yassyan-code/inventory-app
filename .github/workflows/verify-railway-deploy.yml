@@ -1,0 +1,84 @@
+name: Verify Railway Deploy
+
+# masterへのpush(=マージ)後、Railway側の実際のデプロイが成功したかを確認する。
+#
+# 背景: GitHub ActionsのCI(lint/test/build)が緑でも、Railway側のビルドや
+# ヘルスチェックが別途失敗することがある。2026-09-27、PR #17〜#24の7件が
+# ヘルスチェック失敗で4日以上本番に反映されていなかったが、誰も気づかなかった
+# (docs/handover.md参照)。このワークフローはその再発を防ぐための自動監視。
+#
+# 必要な設定(初回のみ・人の手で):
+#   Railwayダッシュボード > Account Settings > Tokens でアカウントトークンを発行し、
+#   `gh secret set RAILWAY_TOKEN` でこのリポジトリに登録する。
+#   未設定の間はこのワークフローは失敗させず、警告を出すだけにする。
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Railway本番デプロイの確認
+    runs-on: ubuntu-latest
+    steps:
+      - name: デプロイ完了まで待ち、状態を確認する
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          PROJECT_ID: 6787a41e-fe11-42a2-9adf-b8296a706072
+          SERVICE_ID: ce5fc1b3-fe91-40e0-b5b2-0b269a02c970
+          ENVIRONMENT_ID: d66d72a1-911a-4024-b570-a2e09363a61d
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "::warning::RAILWAY_TOKEN が未設定のため、デプロイ確認をスキップします。"
+            echo "Railwayダッシュボード > Account Settings > Tokens でトークンを発行し、"
+            echo "'gh secret set RAILWAY_TOKEN' で登録してください。"
+            exit 0
+          fi
+
+          QUERY='query($input: DeploymentListInput!) { deployments(input: $input, first: 1) { edges { node { id status createdAt } } } }'
+
+          MAX_ATTEMPTS=20   # 20回 x 20秒 = 最大約6.5分待つ
+          ATTEMPT=0
+          LAST_STATUS=""
+
+          while [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+
+            RESPONSE=$(curl -sS --request POST \
+              --url https://backboard.railway.com/graphql/v2 \
+              --header "Authorization: Bearer ${RAILWAY_TOKEN}" \
+              --header "Content-Type: application/json" \
+              --data "$(jq -n --arg q "$QUERY" --arg p "$PROJECT_ID" --arg s "$SERVICE_ID" --arg e "$ENVIRONMENT_ID" \
+                '{query: $q, variables: {input: {projectId: $p, serviceId: $s, environmentId: $e}}}')")
+
+            if echo "$RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+              echo "::warning::Railway APIがエラーを返しました: $(echo "$RESPONSE" | jq -c '.errors')"
+              echo "$RESPONSE"
+              exit 0
+            fi
+
+            LAST_STATUS=$(echo "$RESPONSE" | jq -r '.data.deployments.edges[0].node.status // "UNKNOWN"')
+            DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.data.deployments.edges[0].node.id // "unknown"')
+
+            echo "[$ATTEMPT/$MAX_ATTEMPTS] deployment=$DEPLOY_ID status=$LAST_STATUS"
+
+            case "$LAST_STATUS" in
+              SUCCESS)
+                echo "✅ Railway本番デプロイ成功 (deployment=$DEPLOY_ID)"
+                exit 0
+                ;;
+              FAILED|CRASHED|REMOVED)
+                echo "::error::Railway本番デプロイが $LAST_STATUS になりました (deployment=$DEPLOY_ID)。"
+                echo "::error::Railwayダッシュボードでログを確認してください: https://railway.com/project/${PROJECT_ID}"
+                exit 1
+                ;;
+            esac
+
+            sleep 20
+          done
+
+          echo "::error::$((MAX_ATTEMPTS * 20))秒待っても状態が確定しませんでした(最終状態: $LAST_STATUS)。手動で確認してください。"
+          exit 1
