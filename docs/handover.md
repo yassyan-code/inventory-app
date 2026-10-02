@@ -80,6 +80,12 @@ READMEの「セットアップ手順」参照。要点だけ書くと:
   Railway側のビルド・ヘルスチェックが別途失敗することがある（2026-09-27、PR #17〜#24の7件が
   ヘルスチェック失敗で本番に反映されていなかった実例あり。原因は`docs/threat-model.md`ではなく
   `nginx.conf`の`listen`ポート固定。PR #25で修正）
+- **上記の「人が確認し忘れる」リスクに対して、2026-10-02（第57回）から自動チェックを追加した**:
+  `.github/workflows/verify-railway-deploy.yml`が`master`へのpush後にRailwayの公開GraphQL APIを
+  ポーリングし、デプロイが`FAILED`/`CRASHED`になったらGitHub Actions上で失敗として検知する。
+  **初回のみ設定が必要**: Railwayダッシュボード > Account Settings > Tokens でアカウントトークンを
+  発行し、`gh secret set RAILWAY_TOKEN`でこのリポジトリに登録すること。未設定の間は警告を出すだけで
+  スキップする（CIを壊さない設計）
 - 手動デプロイしたい場合、RailwayはCLIまたはダッシュボードの「Redeploy」。Vercelは `npx vercel --prod`
 
 ## 6. 既知の未対応・積み残し
