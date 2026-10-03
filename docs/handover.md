@@ -43,6 +43,7 @@ inventory-app/
     architecture.md                    全体構成図・データフロー・設計判断（第55回）
     threat-model.md                    脅威モデル・対策一覧（第54回）
     project-plan-chat-migration.md     チャット機能のRailway対応・見積り＆工程（第56回、未着手）
+    scale-bottleneck.md                負荷実験で見つけたボトルネックとスケール方針（第58回）
 ```
 
 ## 2. ローカル開発の始め方
