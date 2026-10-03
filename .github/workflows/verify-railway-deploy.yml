@@ -70,6 +70,12 @@ jobs:
                 echo "✅ Railway本番デプロイ成功 (deployment=$DEPLOY_ID)"
                 exit 0
                 ;;
+              SKIPPED)
+                # ビルド成果物に実質差分が無い(ドキュメントのみの変更等)とRailwayが
+                # 判断した場合に起きる。失敗ではないので成功扱いにする。
+                echo "ℹ️ Railwayがこのデプロイをスキップしました(差分なしと判断・正常) (deployment=$DEPLOY_ID)"
+                exit 0
+                ;;
               FAILED|CRASHED|REMOVED)
                 echo "::error::Railway本番デプロイが $LAST_STATUS になりました (deployment=$DEPLOY_ID)。"
                 echo "::error::Railwayダッシュボードでログを確認してください: https://railway.com/project/${PROJECT_ID}"
