@@ -47,7 +47,7 @@ gh pr create --base master --title "hotfix: ロールバック" --body "..."
 ```
 
 - masterはbranch protectionでCI必須なので、ロールバックのPRも通常通りCIを通してからマージする
-- CIが通れば、第13回で組んだ`checkSuites`ゲートにより、Railwayが自動でロールバック後の状態を本番反映する
+- マージ後は、Railwayが自動でロールバック後の状態を本番反映する。**2026-10-06に本番の「Wait for CI」(`checkSuites`)はオフにした**（`Verify Railway Deploy`との待ち合いで本番がスキップされたため。`postmortem-2026-10-06-railway-ci-deadlock.md`参照）。CIが失敗していてもデプロイは止まらないので、ロールバックのPRもCIが緑になってからマージする
 - 「直push」で急いで戻したくなるが、branch protectionにより直pushはできない設計にしてある（＝事故防止が優先）
 
 DB起因（マイグレーションミス等）の場合は `docs/db-backup-restore.md` の復元手順を使う。
