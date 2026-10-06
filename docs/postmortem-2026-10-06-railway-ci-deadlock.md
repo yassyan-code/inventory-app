@@ -38,7 +38,7 @@ Railway を見ると、staging は約30秒で SUCCESS、本番は `WAITING` の�
 | 1 | 「Wait for CI」をオフにする（循環を断つ） | 実施済み |
 | 2 | CI が失敗してもデプロイは止まらなくなったため、**CI が通ってからマージする運用**で補う | 運用ルール |
 | 3 | `incident-runbook.md` の「`checkSuites` ゲートで自動反映」の記述を修正する | 実施済み |
-| 4 | 次のマージで `Verify Railway Deploy` が SUCCESS になるか確認する | **未確認（次のマージ時）** |
+| 4 | 次のマージで `Verify Railway Deploy` が SUCCESS になるか確認する | **確認済み**（2026-10-06、PR #34 のマージ時。本番は `WAITING` を挟まず約40秒で SUCCESS、verify も success） |
 | 5 | verify が `WAITING` を長く検知したら「本番がスキップされた可能性」を明示して失敗させる、など判定の見直し | 未実施（検討） |
 
 ## 学び
