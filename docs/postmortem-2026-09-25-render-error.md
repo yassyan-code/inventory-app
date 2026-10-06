@@ -42,7 +42,7 @@
 | 3 | 同じエラーの連投・大量送信を間引き、DB を圧迫しない | 実装済み（10秒間引き・1セッション20件） |
 | 4 | `008_error_logs.sql` を staging → production の順に適用する | **未実施（要対応）** |
 | 5 | `error_logs` を定期的に確認する習慣・通知を作る（新規エラーで Slack/Discord に通知など） | 未実施（次の課題） |
-| 6 | 未定義変数 (`no-undef`) を lint のエラー扱いにして CI で止める | 未実施（要確認） |
+| 6 | 未定義変数 (`no-undef`) を lint のエラー扱いにして CI で止める | 実施済み（`.oxlintrc.json` で `no-undef` を error に。CI の `npm run lint` で検出） |
 
 ## 学び
 
