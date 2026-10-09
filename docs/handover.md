@@ -45,6 +45,7 @@ inventory-app/
     project-plan-chat-migration.md     チャット機能のRailway対応・見積り＆工程（第56回、未着手）
     scale-bottleneck.md                負荷実験で見つけたボトルネックとスケール方針（第58回）
     spof.md                            単一障害点マップと冗長化の設計（第59回）
+    async-architecture.md              待たせない・詰まらせない非同期設計（第60回、設計のみ・未実装）
 ```
 
 ## 2. ローカル開発の始め方
