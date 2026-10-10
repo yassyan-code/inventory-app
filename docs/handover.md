@@ -46,6 +46,7 @@ inventory-app/
     scale-bottleneck.md                負荷実験で見つけたボトルネックとスケール方針（第58回）
     spof.md                            単一障害点マップと冗長化の設計（第59回）
     async-architecture.md              待たせない・詰まらせない非同期設計（第60回、設計のみ・未実装）
+    data-pipeline.md                   集めて・整えて・貯める日次集計パイプライン（第61回、SQL作成済み・未適用）
 ```
 
 ## 2. ローカル開発の始め方
