@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import CameraScanner from './CameraScanner'
 import HardwareScannerInput from './HardwareScannerInput'
 import { findByBarcode, createProduct, adjustQuantity, listCategories } from '../lib/inventory'
 import { lookupProductName } from '../lib/productLookup'
+import { suggestProductFields } from '../lib/productSuggest'
 
 const MODES = {
   CAMERA: 'camera',
@@ -27,6 +28,8 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
   const [manualBarcode, setManualBarcode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAdjusting, setIsAdjusting] = useState(false)
+  const [aiNote, setAiNote] = useState('')
+  const aiRequestId = useRef(0) // 古い提案が、次の商品の入力欄に入らないようにする
 
   useEffect(() => {
     listCategories().then(setCategoryOptions).catch(() => {})
@@ -51,6 +54,7 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
         setName(suggestedName ?? '')
         setQuantity(1)
         setStatus('new')
+        if (isAdmin && suggestedName) applyAiSuggestion(suggestedName)
       }
     } catch (err) {
       setMessage('エラー: ' + err.message)
@@ -58,7 +62,21 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
     }
   }
 
+  // 商品名の整形・カテゴリ提案。フォームは先に出し、AIの答えは届いたら埋める（待たせない）。
+  // 入力済みの欄は上書きしない。保存はユーザーが確認して押したときだけ。
+  const applyAiSuggestion = async (rawName) => {
+    const id = ++aiRequestId.current
+    const suggestion = await suggestProductFields(rawName, categoryOptions)
+    if (!suggestion || id !== aiRequestId.current) return
+
+    setName((prev) => (prev === rawName ? suggestion.name.slice(0, MAX_NAME_LENGTH) : prev))
+    setCategory((prev) => prev || suggestion.category.slice(0, MAX_CATEGORY_LENGTH))
+    setAiNote('AIが商品名とカテゴリを整えました。内容を確認して、必要なら直してください')
+  }
+
   const resetForm = () => {
+    aiRequestId.current++
+    setAiNote('')
     setStatus('idle')
     setBarcode('')
     setName('')
@@ -218,6 +236,7 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
         <form className="scan-result" onSubmit={handleRegisterNew}>
           <p className="scan-result__barcode">バーコード: {barcode}</p>
           <p>新しい商品です。商品名と数量を入力してください。</p>
+          {aiNote && <p className="scan-result__category">✨ {aiNote}</p>}
           <label>
             商品名
             <input
