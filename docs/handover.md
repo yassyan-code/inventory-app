@@ -48,6 +48,7 @@ inventory-app/
     async-architecture.md              待たせない・詰まらせない非同期設計（第60回、設計のみ・未実装）
     data-pipeline.md                   集めて・整えて・貯める日次集計パイプライン（第61回、SQL作成済み・未適用）
     read-scaling.md                    読み取りを手前に置くキャッシュ階層の設計（第62回、設計のみ・未実装）
+    ai-structured-output.md            AIで商品名の整形・カテゴリ提案（第63回、構造化出力。/apiが要るので本番Railwayでは未稼働）
 ```
 
 ## 2. ローカル開発の始め方
