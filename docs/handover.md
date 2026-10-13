@@ -49,6 +49,7 @@ inventory-app/
     data-pipeline.md                   集めて・整えて・貯める日次集計パイプライン（第61回、SQL作成済み・未適用）
     read-scaling.md                    読み取りを手前に置くキャッシュ階層の設計（第62回、設計のみ・未実装）
     ai-structured-output.md            AIで商品名の整形・カテゴリ提案（第63回、構造化出力。/apiが要るので本番Railwayでは未稼働）
+    rag.md                             docs/を意味で検索して根拠つきで答えるRAG（第64回、scripts/rag/。ローカルのみ・Supabase未適用）
 ```
 
 ## 2. ローカル開発の始め方
