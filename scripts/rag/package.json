@@ -1,0 +1,11 @@
+{
+  "name": "inventory-app-rag",
+  "private": true,
+  "type": "module",
+  "description": "第64課題: docs/ を意味で検索して根拠つきで答える小さなRAG（アプリ本体とは独立）",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.1",
+    "@electric-sql/pglite": "^0.3.0",
+    "@huggingface/transformers": "^3.0.0"
+  }
+}
