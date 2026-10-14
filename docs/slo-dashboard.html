@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SLO ダッシュボード</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1f2937;--card:#fff;--line:#e5e7eb;--sub:#6b7280}
+@media (prefers-color-scheme:dark){:root{--bg:#111827;--fg:#f3f4f6;--card:#1f2937;--line:#374151;--sub:#9ca3af}}
+body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,"Hiragino Sans","Yu Gothic",sans-serif}
+main{max-width:860px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.sub{color:var(--sub);margin:0 0 20px;font-size:13px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}h2{font-size:14px;margin:0}
+.badge{color:#fff;border-radius:99px;padding:1px 10px;font-size:12px;white-space:nowrap}
+.big{font-size:30px;font-weight:700;margin:8px 0}.big small{font-size:12px;color:var(--sub);font-weight:400}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}.bar i{display:block;height:100%}
+.meta{margin:6px 0 0;font-size:12px;color:var(--sub)}.act{margin:8px 0 0;font-size:13px}
+h3{font-size:14px;margin:24px 0 6px}.spark{display:flex;align-items:flex-end;gap:2px;height:60px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px}
+.spark i{flex:1;min-width:2px;border-radius:2px}
+</style></head><body><main>
+<h1>SLO ダッシュボード</h1>
+<p class="sub">測定 42件（2026/10/15 7:11:13 〜 2026/10/15 7:13:30） ／ 評価期間 直近30日 ／ 作成 2026/10/15 7:13:34</p>
+<div class="grid">
+<section class="card">
+  <div class="head"><h2>画面が開く（可用性）</h2><span class="badge" style="background:#1a7f4b">正常</span></div>
+  <div class="big">100.00% <small>目標 99.5%</small></div>
+  <div class="bar" role="img" aria-label="エラーバジェット残り 100%"><i style="width:100%;background:#1a7f4b"></i></div>
+  <p class="meta">エラーバジェット残り 100%（失敗 0 / 許容 0.1）</p>
+  <p class="meta">燃焼率 1時間 0.0倍 ・ 6時間 0.0倍</p>
+  <p class="act">通常運転</p>
+</section>
+<section class="card">
+  <div class="head"><h2>データ基盤に繋がる（可用性）</h2><span class="badge" style="background:#1a7f4b">正常</span></div>
+  <div class="big">100.00% <small>目標 99.5%</small></div>
+  <div class="bar" role="img" aria-label="エラーバジェット残り 100%"><i style="width:100%;background:#1a7f4b"></i></div>
+  <p class="meta">エラーバジェット残り 100%（失敗 0 / 許容 0.1）</p>
+  <p class="meta">燃焼率 1時間 0.0倍 ・ 6時間 0.0倍</p>
+  <p class="act">通常運転</p>
+</section>
+<section class="card">
+  <div class="head"><h2>画面が速い（1秒以内）</h2><span class="badge" style="background:#1a7f4b">正常</span></div>
+  <div class="big">100.00% <small>目標 95.0%</small></div>
+  <div class="bar" role="img" aria-label="エラーバジェット残り 100%"><i style="width:100%;background:#1a7f4b"></i></div>
+  <p class="meta">エラーバジェット残り 100%（失敗 0 / 許容 1.1）</p>
+  <p class="meta">燃焼率 1時間 0.0倍 ・ 6時間 0.0倍</p>
+  <p class="act">通常運転</p>
+</section>
+</div>
+<h3>画面（web）の応答時間 — 直近の測定（棒の高さ=ms、赤=失敗）</h3><div class="spark"><i title="2026/10/15 7:11:32 248ms" style="height:24.8%;background:#3b82f6"></i><i title="2026/10/15 7:11:38 302ms" style="height:30.2%;background:#3b82f6"></i><i title="2026/10/15 7:11:44 177ms" style="height:17.7%;background:#3b82f6"></i><i title="2026/10/15 7:11:51 191ms" style="height:19.1%;background:#3b82f6"></i><i title="2026/10/15 7:11:57 175ms" style="height:17.5%;background:#3b82f6"></i><i title="2026/10/15 7:12:03 205ms" style="height:20.5%;background:#3b82f6"></i><i title="2026/10/15 7:12:09 206ms" style="height:20.599999999999998%;background:#3b82f6"></i><i title="2026/10/15 7:12:15 175ms" style="height:17.5%;background:#3b82f6"></i><i title="2026/10/15 7:12:22 200ms" style="height:20%;background:#3b82f6"></i><i title="2026/10/15 7:12:28 197ms" style="height:19.7%;background:#3b82f6"></i><i title="2026/10/15 7:12:34 183ms" style="height:18.3%;background:#3b82f6"></i><i title="2026/10/15 7:12:40 292ms" style="height:29.2%;background:#3b82f6"></i><i title="2026/10/15 7:12:46 194ms" style="height:19.400000000000002%;background:#3b82f6"></i><i title="2026/10/15 7:12:53 176ms" style="height:17.599999999999998%;background:#3b82f6"></i><i title="2026/10/15 7:12:59 201ms" style="height:20.1%;background:#3b82f6"></i><i title="2026/10/15 7:13:05 182ms" style="height:18.2%;background:#3b82f6"></i><i title="2026/10/15 7:13:11 195ms" style="height:19.5%;background:#3b82f6"></i><i title="2026/10/15 7:13:17 200ms" style="height:20%;background:#3b82f6"></i><i title="2026/10/15 7:13:24 175ms" style="height:17.5%;background:#3b82f6"></i><i title="2026/10/15 7:13:30 201ms" style="height:20.1%;background:#3b82f6"></i></div>
+<h3>データ基盤（data）の応答時間</h3><div class="spark"><i title="2026/10/15 7:11:32 70ms" style="height:7.000000000000001%;background:#3b82f6"></i><i title="2026/10/15 7:11:38 66ms" style="height:6.6000000000000005%;background:#3b82f6"></i><i title="2026/10/15 7:11:44 67ms" style="height:6.7%;background:#3b82f6"></i><i title="2026/10/15 7:11:51 53ms" style="height:5.3%;background:#3b82f6"></i><i title="2026/10/15 7:11:57 56ms" style="height:5.6000000000000005%;background:#3b82f6"></i><i title="2026/10/15 7:12:03 77ms" style="height:7.7%;background:#3b82f6"></i><i title="2026/10/15 7:12:09 53ms" style="height:5.3%;background:#3b82f6"></i><i title="2026/10/15 7:12:15 58ms" style="height:5.800000000000001%;background:#3b82f6"></i><i title="2026/10/15 7:12:22 55ms" style="height:5.5%;background:#3b82f6"></i><i title="2026/10/15 7:12:28 72ms" style="height:7.199999999999999%;background:#3b82f6"></i><i title="2026/10/15 7:12:34 75ms" style="height:7.5%;background:#3b82f6"></i><i title="2026/10/15 7:12:40 58ms" style="height:5.800000000000001%;background:#3b82f6"></i><i title="2026/10/15 7:12:46 56ms" style="height:5.6000000000000005%;background:#3b82f6"></i><i title="2026/10/15 7:12:53 78ms" style="height:7.8%;background:#3b82f6"></i><i title="2026/10/15 7:12:59 64ms" style="height:6.4%;background:#3b82f6"></i><i title="2026/10/15 7:13:05 65ms" style="height:6.5%;background:#3b82f6"></i><i title="2026/10/15 7:13:11 50ms" style="height:5%;background:#3b82f6"></i><i title="2026/10/15 7:13:17 81ms" style="height:8.1%;background:#3b82f6"></i><i title="2026/10/15 7:13:24 64ms" style="height:6.4%;background:#3b82f6"></i><i title="2026/10/15 7:13:30 58ms" style="height:5.800000000000001%;background:#3b82f6"></i></div>
+</main></body></html>

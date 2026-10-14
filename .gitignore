@@ -34,3 +34,6 @@ dist-ssr
 # 第64課題: RAGの索引（ingest.mjs で作り直せる）と評価の出力
 scripts/rag/.index*/
 scripts/rag/eval-result.txt
+
+# 第66課題: 測定の生データ（画面は docs/slo-dashboard.html に書き出す）
+scripts/sre/data/
