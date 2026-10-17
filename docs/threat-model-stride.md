@@ -74,7 +74,7 @@
 | 所 | 今 | 提案 |
 |---|---|---|
 | member の `stock_items` 更新 | 全列を更新できる（`quantity` 以外も） | 列単位の権限で `quantity` だけに絞る。DB に `CHECK (quantity >= 0)` を追加（#11） |
-| `audit_log` | — | owner の閲覧のみ・追記専用（**今回実装**） |
+| `data_audit_log` | — | owner の閲覧のみ・追記専用（**今回実装**） |
 | GitHub Actions | 既定の権限 | `permissions: contents: read` を明示し、必要なジョブだけ広げる |
 | `RAILWAY_TOKEN` | アカウント全体のトークン | プロジェクト単位のトークンで足りるか検証して置き換える（#19） |
 | service role キー | 手元の `.env`（staging）にあり、負荷試験の後始末で使う | 本番のキーは手元に置かない。使う処理を最小のスクリプトに限る |
@@ -89,9 +89,9 @@
 | `RAILWAY_TOKEN` | GitHub Secrets | Actions のみ | 90日ごと、メンバー変更時 |
 | `VITE_YAHOO_APP_ID` | ブラウザに配布 | 全員 | 秘密ではない。枠の消費を監視 |
 
-流出の疑いが出たら: ①該当キーを無効化 → ②新しいキーを環境変数に入れて再デプロイ → ③`audit_log` と各サービスの利用ログで被害範囲を見る → ④ポストモーテム。
+流出の疑いが出たら: ①該当キーを無効化 → ②新しいキーを環境変数に入れて再デプロイ → ③`data_audit_log` と各サービスの利用ログで被害範囲を見る → ④ポストモーテム。
 
-## ④ 今回強化したもの: 監査ログ（`supabase/013_audit_log.sql`）
+## ④ 今回強化したもの: 監査ログ（`supabase/013_data_audit_log.sql`）
 
 秘密管理・権限・監査ログのうち、**一番穴が実在した監査ログ**を選んだ。下の3つは、実際に再現できた（013 を入れない状態で、member が API 直叩きで `update stock_items set quantity = 3` を実行し、履歴 0件のまま数量が変わった。他人の ID を `created_by` に書いた履歴も、そのまま入った）。
 
@@ -99,7 +99,7 @@
 
 | 問題 | 直し方 |
 |---|---|
-| 履歴を残さずに在庫数を変えられる（#8）／商品マスタの変更が追えない（#10）／ロール変更が追えない（#12） | `products` `stock_items` `team_members` にトリガーを付け、**変更を DB が自動で `audit_log` に記録**する。誰(`actor = auth.uid()`)・いつ・どの行・**変わった列だけ**の前後の値。アプリの実装に依存しないので、API 直叩きでも必ず残る |
+| 履歴を残さずに在庫数を変えられる（#8）／商品マスタの変更が追えない（#10）／ロール変更が追えない（#12） | `products` `stock_items` `team_members` にトリガーを付け、**変更を DB が自動で `data_audit_log` に記録**する。誰(`actor = auth.uid()`)・いつ・どの行・**変わった列だけ**の前後の値。アプリの実装に依存しないので、API 直叩きでも必ず残る |
 | 監査ログ自体を消される・書き換えられる | **追記専用**。insert/update/delete のポリシーも権限も無し。書けるのは `SECURITY DEFINER` のトリガーだけ |
 | 誰でもログを見られる | 閲覧は**そのチームの owner だけ**（`is_team_owner`）。別チーム・一般メンバーは 0件 |
 | `created_by` のなりすまし（#9） | ログイン中のユーザーなら、申告された値を捨てて `auth.uid()` に**上書き**（`force_created_by`）。拒否ではなく上書きにしたので、既存のアプリは変更不要 |
@@ -118,9 +118,10 @@
 
 ### 適用手順と注意
 
-1. staging(`rhowcziknvabdranlhvf`) の SQL Editor で `013_audit_log.sql` を実行 → 画面で在庫操作・商品登録が通ることを確認 → `select * from audit_log` に記録されることを確認
+1. staging(`rhowcziknvabdranlhvf`) の SQL Editor で `013_data_audit_log.sql` を実行 → 画面で在庫操作・商品登録が通ることを確認 → `select * from data_audit_log` に記録されることを確認
 2. 問題なければ production(`noygjyxinkriupwequvt`) で実行（**アドレスバーでプロジェクトを確認**）
-3. **未適用**: この作業ではSupabaseへ適用していない。ローカルのテストまで。
+3. **名前の衝突（2026-10-17に発覚）**: staging には、未マージの課金ブランチ（PR#15）の旧 `011_security_hardening.sql` が適用済みで、別設計の `audit_log` と同名トリガー `trg_audit_products` が既にあった。初版の 013 は `audit_log` という名前だったため、`column "at" does not exist` で失敗した。テーブル・関数・トリガーを `data_audit_log` / `data_audit_row` / `trg_data_audit_*` に改名し、既存のものには触れない形にした。**マイグレーションは「リポジトリの master にある物」と「実際の DB にある物」がずれうる**ので、適用前に同名のテーブル・トリガーが無いか確認する。
+4. **適用状況**: この作業ではSupabaseへ適用していない。ローカルのテストまで。
 
 ## 設計判断
 

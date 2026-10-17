@@ -9,16 +9,22 @@
 --      書いて insert できる（なりすまし）。
 --
 -- 対策:
---   ・products / stock_items / team_members の変更を、トリガーで audit_log に自動記録する。
+--   ・products / stock_items / team_members の変更を、トリガーで data_audit_log に自動記録する。
 --     アプリの実装に依存しない（API 直叩きでも、必ず記録される）。
---   ・audit_log は追記専用。アプリのキー（anon / authenticated）からは insert / update / delete できない。
+--   ・data_audit_log は追記専用。アプリのキー（anon / authenticated）からは insert / update / delete できない。
 --     書けるのは SECURITY DEFINER のトリガーだけ。閲覧は、そのチームの owner だけ。
 --   ・created_by は、ログイン中のユーザーなら必ず auth.uid() に上書きする（申告を信用しない）。
+--
+-- 名前について:
+--   テーブル名を audit_log にしないのは、staging には未マージの課金ブランチ(feature/billing-stripe)の
+--   011_security_hardening.sql が適用済みで、別設計の audit_log(actor_user_id/action/target/meta)と
+--   同名トリガー trg_audit_products が既にあるため。同名だと create table が黙ってスキップされ、
+--   索引作成で「column "at" does not exist」になる。別名にして、既存の仕組みには触れない。
 --
 -- 適用順序: ① staging(rhowcziknvabdranlhvf) → ② production(noygjyxinkriupwequvt)
 -- 検証: scripts/security/audit-log.test.js（ローカルのPostgresでRLSごと再現して確かめる）
 
-create table if not exists audit_log (
+create table if not exists data_audit_log (
   id         bigint generated always as identity primary key,
   at         timestamptz not null default now(),
   team_id    uuid,               -- どのチームの出来事か（閲覧権限の判定に使う）
@@ -30,22 +36,22 @@ create table if not exists audit_log (
   new_data   jsonb               -- INSERT は行全体。UPDATE は「変わった列」だけ
 );
 
-create index if not exists audit_log_team_at_idx on audit_log (team_id, at desc);
+create index if not exists data_audit_log_team_at_idx on data_audit_log (team_id, at desc);
 
-alter table audit_log enable row level security;
+alter table data_audit_log enable row level security;
 
 -- 閲覧: そのチームの owner だけ（is_team_owner は 007 で定義済み）
-drop policy if exists "owners read audit_log" on audit_log;
-create policy "owners read audit_log" on audit_log
+drop policy if exists "owners read data_audit_log" on data_audit_log;
+create policy "owners read data_audit_log" on data_audit_log
   for select to authenticated
   using (public.is_team_owner(team_id));
 
 -- 追記専用: insert / update / delete のポリシーは作らない。権限自体も外す（二重の防御）
-revoke all on audit_log from anon, authenticated;
-grant select on audit_log to authenticated;
+revoke all on data_audit_log from anon, authenticated;
+grant select on data_audit_log to authenticated;
 
--- 記録するトリガー関数。SECURITY DEFINER なので、呼び出した人に audit_log の書き込み権限がなくても記録できる
-create or replace function public.audit_row()
+-- 記録するトリガー関数。SECURITY DEFINER なので、呼び出した人に data_audit_log の書き込み権限がなくても記録できる
+create or replace function public.data_audit_row()
 returns trigger as $$
 declare
   v_row jsonb;
@@ -71,7 +77,7 @@ begin
     end if;
   end if;
 
-  insert into audit_log (team_id, actor, table_name, op, row_id, old_data, new_data)
+  insert into data_audit_log (team_id, actor, table_name, op, row_id, old_data, new_data)
   values (
     (v_row ->> 'team_id')::uuid,
     auth.uid(),
@@ -86,20 +92,20 @@ end;
 $$ language plpgsql security definer set search_path = public, pg_temp;
 
 -- 記録する対象: 商品マスタ・在庫数・チームの所属／ロール
-drop trigger if exists trg_audit_products on products;
-create trigger trg_audit_products
+drop trigger if exists trg_data_audit_products on products;
+create trigger trg_data_audit_products
   after insert or update or delete on products
-  for each row execute function public.audit_row();
+  for each row execute function public.data_audit_row();
 
-drop trigger if exists trg_audit_stock_items on stock_items;
-create trigger trg_audit_stock_items
+drop trigger if exists trg_data_audit_stock_items on stock_items;
+create trigger trg_data_audit_stock_items
   after insert or update or delete on stock_items
-  for each row execute function public.audit_row();
+  for each row execute function public.data_audit_row();
 
-drop trigger if exists trg_audit_team_members on team_members;
-create trigger trg_audit_team_members
+drop trigger if exists trg_data_audit_team_members on team_members;
+create trigger trg_data_audit_team_members
   after insert or update or delete on team_members
-  for each row execute function public.audit_row();
+  for each row execute function public.data_audit_row();
 
 -- created_by の上書き（なりすまし防止）。ログイン中のユーザーなら、申告された値は捨てて auth.uid() にする
 create or replace function public.force_created_by()
@@ -123,14 +129,14 @@ create trigger trg_stock_movements_created_by
   for each row execute function public.force_created_by();
 
 -- 確認用クエリ（owner としてログインした状態、または SQL エディタで）:
---   select at, actor, table_name, op, row_id, old_data, new_data from audit_log order by at desc limit 50;
+--   select at, actor, table_name, op, row_id, old_data, new_data from data_audit_log order by at desc limit 50;
 --
 -- ロールバック:
---   drop trigger if exists trg_audit_products on products;
---   drop trigger if exists trg_audit_stock_items on stock_items;
---   drop trigger if exists trg_audit_team_members on team_members;
+--   drop trigger if exists trg_data_audit_products on products;
+--   drop trigger if exists trg_data_audit_stock_items on stock_items;
+--   drop trigger if exists trg_data_audit_team_members on team_members;
 --   drop trigger if exists trg_products_created_by on products;
 --   drop trigger if exists trg_stock_movements_created_by on stock_movements;
---   drop function if exists public.audit_row();
+--   drop function if exists public.data_audit_row();
 --   drop function if exists public.force_created_by();
---   drop table if exists audit_log;
+--   drop table if exists data_audit_log;
