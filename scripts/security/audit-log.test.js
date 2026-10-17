@@ -1,4 +1,4 @@
-// 第67課題: 監査ログ（supabase/013_audit_log.sql）を、ローカルのPostgres(PGlite)で実際のRLSごと確かめる。
+// 第67課題: 監査ログ（supabase/013_data_audit_log.sql）を、ローカルのPostgres(PGlite)で実際のRLSごと確かめる。
 // Supabase の auth スキーマ・ロール・auth.uid() だけを最小限まねて、本物のマイグレーションをそのまま流す。
 import { describe, it, expect, beforeAll } from 'vitest'
 import fs from 'node:fs'
@@ -23,7 +23,7 @@ async function as(user, fn) {
     await db.exec(`reset role; select set_config('request.jwt.claims', '', false)`)
   }
 }
-const audit = async () => (await db.query('select * from audit_log order by id')).rows // 管理者権限で全件を見る
+const audit = async () => (await db.query('select * from data_audit_log order by id')).rows // 管理者権限で全件を見る
 
 beforeAll(async () => {
   db = new PGlite()
@@ -35,11 +35,11 @@ beforeAll(async () => {
       $$ select (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid $$;
     grant usage on schema public, auth to anon, authenticated;
   `)
-  for (const f of ['schema.sql', '007_role_write_policies.sql', '010_stock_product_team_consistency.sql', '013_audit_log.sql']) {
+  for (const f of ['schema.sql', '007_role_write_policies.sql', '010_stock_product_team_consistency.sql', '013_data_audit_log.sql']) {
     await db.exec(sql(f))
   }
-  await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated`) // Supabase の既定の権限。audit_log は 013 で絞った後に付け直す
-  await db.exec(`revoke all on audit_log from authenticated; grant select on audit_log to authenticated`)
+  await db.exec(`grant select, insert, update, delete on all tables in schema public to authenticated`) // Supabase の既定の権限。data_audit_log は 013 で絞った後に付け直す
+  await db.exec(`revoke all on data_audit_log from authenticated; grant select on data_audit_log to authenticated`)
 
   // ユーザー作成 → トリガーで各自の専用チーム(owner)ができる
   await db.exec(`insert into auth.users values ('${OWNER_A}', 'a@example.com'), ('${OWNER_B}', 'b@example.com'), ('${MEMBER_A}', 'm@example.com')`)
@@ -51,7 +51,7 @@ beforeAll(async () => {
     productA = (await db.query(`insert into products (barcode, name, category, team_id) values ('111', 'りんご', '果物', '${teamA}') returning id`)).rows[0].id
     await db.query(`insert into stock_items (product_id, quantity, team_id) values ('${productA}', 10, '${teamA}')`)
   })
-  await db.exec('truncate audit_log') // セットアップ分は数えない
+  await db.exec('truncate data_audit_log') // セットアップ分は数えない
 })
 
 describe('監査ログ: 記録される', () => {
@@ -84,26 +84,26 @@ describe('監査ログ: 記録される', () => {
 
 describe('監査ログ: 守られている', () => {
   it('owner は自チームのログを読める', async () => {
-    const rows = await as(OWNER_A, async () => (await db.query('select * from audit_log')).rows)
+    const rows = await as(OWNER_A, async () => (await db.query('select * from data_audit_log')).rows)
     expect(rows.length).toBeGreaterThan(0)
     expect(rows.every((r) => r.team_id === teamA)).toBe(true)
   })
 
   it('一般メンバーは読めない（0件）', async () => {
-    const rows = await as(MEMBER_A, async () => (await db.query('select * from audit_log')).rows)
+    const rows = await as(MEMBER_A, async () => (await db.query('select * from data_audit_log')).rows)
     expect(rows).toHaveLength(0)
   })
 
   it('別チームの owner には見えない', async () => {
-    const rows = await as(OWNER_B, async () => (await db.query('select * from audit_log')).rows)
+    const rows = await as(OWNER_B, async () => (await db.query('select * from data_audit_log')).rows)
     expect(rows).toHaveLength(0)
   })
 
   it('アプリのキー（authenticated）からは、書き込み・改ざん・削除ができない（追記専用）', async () => {
     for (const q of [
-      `insert into audit_log (table_name, op) values ('x', 'INSERT')`,
-      `update audit_log set actor = null`,
-      `delete from audit_log`,
+      `insert into data_audit_log (table_name, op) values ('x', 'INSERT')`,
+      `update data_audit_log set actor = null`,
+      `delete from data_audit_log`,
     ]) {
       await expect(as(OWNER_A, () => db.query(q))).rejects.toThrow(/permission denied/)
     }
