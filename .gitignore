@@ -29,7 +29,6 @@ dist-ssr
 *.sw?
 
 .vercel
-.env*
 
 # 第64課題: RAGの索引（ingest.mjs で作り直せる）と評価の出力
 scripts/rag/.index*/
