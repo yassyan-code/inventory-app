@@ -1,0 +1,69 @@
+name: SLO Probe
+
+# 第72課題: SLOの測定を定期実行する（docs/slo.md の「定期実行は未実装」を埋める）。
+#
+# 10分おきに本番(Web・Supabase)をGETで測り、履歴を slo-data ブランチの probes.jsonl に貯める。
+# 履歴は常に1コミットに上書き(force push)するので、コミットが増え続けない。master には触れない。
+#
+# 限界(正直に):
+#   - GitHub の cron は遅れる・間引かれることがある。長期の死活は Uptime Kuma が正で、これは補助
+#   - 測定地点はGitHubのサーバー1か所。リポジトリに60日更新が無いと、定期実行は自動で止まる
+#   - 1時間に6件を目標にしている。MIN_SAMPLES(5件)を下回る時間帯は「データ不足」になる
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: slo-probe
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    name: 測定して履歴を残す
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: これまでの履歴を取り出す
+        run: |
+          mkdir -p scripts/sre/data
+          if git ls-remote --exit-code --heads origin slo-data >/dev/null 2>&1; then
+            git fetch --depth=1 origin slo-data
+            git show FETCH_HEAD:probes.jsonl > scripts/sre/data/probes.jsonl
+          fi
+
+      - name: 測定する
+        run: node scripts/sre/probe.mjs
+
+      - name: 古い履歴を捨てる
+        run: node scripts/sre/retain.mjs
+
+      - name: 今の状態を要約に出す
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/sre/report.mjs >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 履歴を slo-data に保存する
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tmp="$(mktemp -d)"
+          cp scripts/sre/data/probes.jsonl "$tmp/probes.jsonl"
+          cd "$tmp"
+          git init -q -b slo-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add probes.jsonl
+          git commit -q -m "SLO probe data"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" slo-data

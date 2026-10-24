@@ -11,17 +11,21 @@
 
 ## セットアップ手順
 
+初めての方は [docs/onboarding.md](docs/onboarding.md)(最初の1歩の手順と、詰まりやすい所)も見てください。
+
 ### 1. 依存パッケージのインストール
 
 ```bash
 npm install
 ```
 
+1分ほどかかります。止まったように見えても待ってください。`deprecated` の警告は無視して大丈夫です。
+
 ### 2. Supabaseプロジェクトの作成
 
 1. https://supabase.com にアクセスし、無料アカウントを作成
 2. 新規プロジェクトを作成
-3. ダッシュボード左メニュー「SQL Editor」を開き、このリポジトリの `supabase/schema.sql` の内容を貼り付けて実行（テーブルとポリシーが作成されます）
+3. ダッシュボード左メニュー「SQL Editor」を開き、このリポジトリの `supabase/schema.sql` の内容を貼り付けて実行（テーブルとポリシーが作成されます。`schema.sql` に入っているのは基本部分です。監査ログ・エラーログなどは `supabase/` の `007`〜`013` の番号付きSQLを順に実行すると追加されます）
 4. ダッシュボード「Project Settings」→「API」から以下をメモ
    - Project URL
    - anon public key
