@@ -1,47 +1,42 @@
 import { supabase } from './supabaseClient'
 
-// ログイン中ユーザーが所属するチームIDを取得する
+// ログイン中ユーザーと、そのユーザーの team_members の1行を取得する
 // (現状は1ユーザー1チームを前提。新規サインアップ時にトリガーが自動でチームを作る)
-export async function getCurrentTeamId() {
+// columns: team_members から取得する列(select に渡す文字列)
+async function fetchMyMembershipRow(columns) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError) throw userError
   if (!user) throw new Error('未ログインです')
 
-  const { data, error } = await supabase
+  const { data: row, error } = await supabase
     .from('team_members')
-    .select('team_id')
+    .select(columns)
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
 
   if (error) throw error
-  if (!data) throw new Error('所属チームが見つかりません')
-  return data.team_id
+  if (!row) throw new Error('所属チームが見つかりません')
+  return { user, row }
+}
+
+// ログイン中ユーザーが所属するチームIDを取得する
+export async function getCurrentTeamId() {
+  const { row } = await fetchMyMembershipRow('team_id')
+  return row.team_id
 }
 
 // ログイン中ユーザーの所属情報（チームID・チーム名・ロール）をまとめて取得する。
 // ヘッダー表示と、ロールによる画面の出し分けに使う。
 export async function getMyMembership() {
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError) throw userError
-  if (!user) throw new Error('未ログインです')
-
-  const { data, error } = await supabase
-    .from('team_members')
-    .select('team_id, role, teams(name)')
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle()
-
-  if (error) throw error
-  if (!data) throw new Error('所属チームが見つかりません')
+  const { user, row } = await fetchMyMembershipRow('team_id, role, teams(name)')
+  const isAdmin = row.role === 'owner' // owner を管理者、それ以外を一般ユーザー扱いにする
 
   return {
-    teamId: data.team_id,
-    teamName: data.teams?.name ?? 'マイチーム',
-    // owner を管理者、それ以外を一般ユーザー扱いにする
-    role: data.role === 'owner' ? 'owner' : 'member',
-    isAdmin: data.role === 'owner',
+    teamId: row.team_id,
+    teamName: row.teams?.name ?? 'マイチーム',
+    role: isAdmin ? 'owner' : 'member',
+    isAdmin,
     email: user.email,
   }
 }
@@ -57,6 +52,11 @@ export async function findByBarcode(barcode) {
   if (error) throw error
   if (!product) return null
 
+  return toStockSummary(product)
+}
+
+// products の1行(stock_items を埋め込み済み)を、画面で使う基本の形にする
+function toStockSummary(product) {
   return {
     id: product.id,
     barcode: product.barcode,
@@ -102,7 +102,7 @@ export async function createProduct(barcode, name, initialQuantity = 0, category
 
 // 在庫数を増減させる（change は正=入庫 / 負=出庫）
 export async function adjustQuantity(productId, change, note = '') {
-  const { data: current, error: fetchError } = await supabase
+  const { data: currentStock, error: fetchError } = await supabase
     .from('stock_items')
     .select('quantity')
     .eq('product_id', productId)
@@ -110,7 +110,7 @@ export async function adjustQuantity(productId, change, note = '') {
 
   if (fetchError) throw fetchError
 
-  const newQuantity = current.quantity + change
+  const newQuantity = currentStock.quantity + change
 
   const { error: updateError } = await supabase
     .from('stock_items')
@@ -144,18 +144,12 @@ export async function listStock(searchText = '', sortOrder = 'name', category = 
     query = query.is('archived_at', null)
   }
 
-  if (sortOrder === 'newest') {
-    query = query.order('created_at', { ascending: false })
-  } else if (sortOrder === 'oldest') {
-    query = query.order('created_at', { ascending: true })
-  } else {
-    query = query.order('name')
-  }
+  query = applySortOrder(query, sortOrder)
 
   if (searchText) {
-    const escaped = searchText.replace(/[%_,]/g, (c) => `\\${c}`)
+    const pattern = escapeFilterValue(searchText)
     query = query.or(
-      `name.ilike.%${escaped}%,barcode.ilike.%${escaped}%,category.ilike.%${escaped}%`
+      `name.ilike.%${pattern}%,barcode.ilike.%${pattern}%,category.ilike.%${pattern}%`
     )
   }
 
@@ -166,44 +160,42 @@ export async function listStock(searchText = '', sortOrder = 'name', category = 
   const { data, error } = await query
   if (error) throw error
 
-  return (data ?? []).map((p) => ({
-    id: p.id,
-    barcode: p.barcode,
-    name: p.name,
-    category: p.category,
-    createdAt: p.created_at,
-    archivedAt: p.archived_at,
-    quantity: extractQuantity(p.stock_items),
+  return (data ?? []).map((product) => ({
+    ...toStockSummary(product),
+    createdAt: product.created_at,
+    archivedAt: product.archived_at,
   }))
+}
+
+function applySortOrder(query, sortOrder) {
+  if (sortOrder === 'newest') return query.order('created_at', { ascending: false })
+  if (sortOrder === 'oldest') return query.order('created_at', { ascending: true })
+  return query.order('name')
+}
+
+// or() に渡す文字列で意味を持つ % _ , の前に \ を付けて、ただの文字として扱わせる
+function escapeFilterValue(text) {
+  return text.replace(/[%_,]/g, (char) => `\\${char}`)
 }
 
 // 商品を非表示にする（データは削除せず残す。入出庫履歴も保持される）
 export async function archiveProduct(productId) {
-  const { error } = await supabase
-    .from('products')
-    .update({ archived_at: new Date().toISOString() })
-    .eq('id', productId)
-
-  if (error) throw error
+  await updateProduct(productId, { archived_at: new Date().toISOString() })
 }
 
 // 非表示にした商品を元に戻す
 export async function unarchiveProduct(productId) {
-  const { error } = await supabase
-    .from('products')
-    .update({ archived_at: null })
-    .eq('id', productId)
-
-  if (error) throw error
+  await updateProduct(productId, { archived_at: null })
 }
 
 // 商品のカテゴリを更新する（空文字は未設定=nullとして保存）
 export async function updateCategory(productId, category) {
-  const { error } = await supabase
-    .from('products')
-    .update({ category: category || null })
-    .eq('id', productId)
+  await updateProduct(productId, { category: category || null })
+}
 
+// products の1件を更新する(失敗したらエラーを投げる)
+async function updateProduct(productId, values) {
+  const { error } = await supabase.from('products').update(values).eq('id', productId)
   if (error) throw error
 }
 
@@ -216,6 +208,6 @@ export async function listCategories() {
 
   if (error) throw error
 
-  const unique = [...new Set((data ?? []).map((d) => d.category).filter(Boolean))]
-  return unique.sort((a, b) => a.localeCompare(b, 'ja'))
+  const uniqueCategories = [...new Set((data ?? []).map((row) => row.category).filter(Boolean))]
+  return uniqueCategories.sort((a, b) => a.localeCompare(b, 'ja'))
 }
