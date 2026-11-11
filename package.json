@@ -11,7 +11,8 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "notices": "node scripts/gen-notices.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.1",
