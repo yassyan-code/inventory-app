@@ -9,7 +9,7 @@
 
 ## 用意するもの
 
-- Node.js 22以上（作者は24で確認）。`node --version` で確認する
+- Node.js 24以上（`.nvmrc` と `package.json` の `engines` で指定）。`node --version` で確認する
 - Git
 - メールアドレス（Supabaseの確認メールを受け取る）
 - Supabaseの無料アカウント（手順3で作る）

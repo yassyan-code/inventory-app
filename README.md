@@ -1,15 +1,22 @@
 # 在庫管理アプリ
 
-バーコードを読み込むと商品名と数量を登録・管理できるアプリです。
+バーコードを読み込むと商品名と数量を登録・管理できるアプリです。小さな店のスタッフが、スマホやPCから複数人で使うことを想定しています。
 
 - スマホ: カメラでバーコード読み取り
 - PC: 市販のバーコードスキャナー（USB/Bluetooth接続、キーボードエミュレーション型）で読み取り
 - データはSupabase（クラウド）に保存され、複数端末・複数人で共有可能
 - 未登録のバーコードはYahoo!ショッピング商品検索APIで商品名を自動取得（未設定時は手入力）
 
-## セットアップ手順
+| 項目 | 内容 |
+|---|---|
+| 作り | Vite + React（PWA対応）。データ操作はフロントから直接Supabase（Postgres + Auth）を呼ぶ |
+| 本番 | Railway。Dockerfile（ビルド後にnginxで静的配信）。`master` へのpushで自動デプロイ |
+| 補助 | Vercel（SSO保護で一般ユーザーは不可）。AIチャット（`api/`）はこちらでのみ動く。本番ではタブごと非表示 |
+| 動作環境 | Node.js 24（`.nvmrc`） |
 
-初めての方は [docs/onboarding.md](docs/onboarding.md)(最初の1歩の手順と、詰まりやすい所)も見てください。
+## 最短で動かす（約30分）
+
+初めての方は [docs/onboarding.md](docs/onboarding.md)（手順と、詰まりやすい所）も見てください。
 
 ### 1. 依存パッケージのインストール
 
@@ -49,6 +56,8 @@ VITE_SUPABASE_ANON_KEY=（Supabaseのanon public key）
 VITE_YAHOO_APP_ID=（Yahoo!のアプリケーションID、任意）
 ```
 
+`.env` は秘密を含むので、Gitに入れません（`.gitignore` 済み）。`.env.example` には変数の名前だけを書きます。
+
 ### 5. 起動
 
 ```bash
@@ -61,7 +70,7 @@ npm run dev
 
 ### 6. スマホから使う場合
 
-同じネットワーク内のスマホでPCのIPアドレス+ポート（例: http://192.168.x.x:5173）にアクセスするか、Vercel/Netlifyなどにデプロイしてスマホのブラウザで開いてください。「ホーム画面に追加」でアプリのように使えます（PWA対応）。
+同じネットワーク内のスマホでPCのIPアドレス+ポート（例: http://192.168.x.x:5173）にアクセスするか、デプロイしたURLをスマホのブラウザで開いてください。「ホーム画面に追加」でアプリのように使えます（PWA対応）。
 
 ## 使い方
 
@@ -71,34 +80,54 @@ npm run dev
    - 未登録商品 → 商品名（自動取得 or 手入力）と初期数量を入力して登録
 3. 「在庫一覧」タブで全商品の一覧・検索・数量調整が可能
 
+## 変更するとき（開発者向け）
+
+| やること | コマンド |
+|---|---|
+| 静的チェック | `npm run lint` |
+| テスト | `npm test` |
+| ビルド | `npm run build` |
+| PR前の一括チェック（git status → lint → test → build） | `bash scripts/pre-pr-check.sh` |
+| 依存を変えたあと、著作権表示（`public/THIRD-PARTY-NOTICES.txt`）を作り直す | `npm run notices` |
+
+1. `master` から作業用ブランチを切る
+2. 変更して、PR前の一括チェックを通す
+3. PRを作る（説明に「何を・なぜ」を書く）。CIが通ったらマージ。マージ後は本番デプロイの成功も確認する
+
+やること・バグ・要望は [GitHubのIssue](https://github.com/yassyan-code/inventory-app/issues) に書きます。何を・どこに残すかのルールは [docs/team-conventions.md](docs/team-conventions.md) の4章にあります。
+
 ## ディレクトリ構成
 
 ```
 src/
-  components/
-    Auth.jsx              ログイン・アカウント作成
-    CameraScanner.jsx     スマホカメラでのバーコード読取
+  components/               画面の部品
+    Auth.jsx                  ログイン・アカウント作成
+    CameraScanner.jsx         スマホカメラでのバーコード読取
     HardwareScannerInput.jsx  PC用スキャナー入力
-    RegisterPanel.jsx     スキャン→登録・入出庫のメイン画面
-    InventoryList.jsx     在庫一覧・検索
-  lib/
-    supabaseClient.js     Supabaseクライアント初期化
-    inventory.js          在庫データのCRUD処理
-    productLookup.js      JANコード→商品名の自動取得
-supabase/
-  schema.sql               Supabaseに作成するテーブル定義
+    RegisterPanel.jsx         スキャン→登録・入出庫のメイン画面
+    InventoryList.jsx         在庫一覧・検索・CSVエクスポート
+    ChatPanel.jsx             AIチャット（本番では非表示）
+  lib/                      データ処理（Supabase呼び出し・CSV・商品名の自動取得など。*.test.js がテスト）
+api/                        AIチャットなどのサーバー関数（Vercel Functions）
+supabase/                   テーブル定義（schema.sql）と、番号付きの追加SQL
+scripts/                    補助スクリプト（PR前チェック、SLO計測、著作権表示の生成など）
+docs/                       ドキュメント
+public/                     静的ファイル（アイコン、THIRD-PARTY-NOTICES.txt）
+.github/workflows/          CI・本番デプロイの確認・SLO計測
+Dockerfile, nginx.conf.template   本番（Railway）の配信設定
 ```
 
 ## 付属ドキュメント
 
-- [使い方マニュアル](docs/manual.md) — 初めて使う人向け
-- [仕様書](docs/spec.md) — 機能・データモデルの詳細
-- [引き継ぎメモ](docs/handover.md) — 次に開発する人向け
+| 読む人 | ドキュメント |
+|---|---|
+| 使う人 | [使い方マニュアル](docs/manual.md) |
+| 作る人 | [オンボーディング](docs/onboarding.md)、[仕様書](docs/spec.md)、[引き継ぎメモ](docs/handover.md)、[チーム規約](docs/team-conventions.md) |
+| 設計を知りたい人 | [アーキテクチャ概要](docs/architecture-overview.md)、[設計判断（ADR）](docs/adr/) |
+| 運用する人 | [SLO](docs/slo.md)、[障害対応の手順](docs/incident-runbook.md)、[DBのバックアップと復元](docs/db-backup-restore.md)、[脅威モデル](docs/threat-model.md) |
 
-## 今後の拡張候補
+`docs/` にある `〇〇-NN.md`（例: `estimation-84.md`）は、学習課題の成果物です。アプリの仕様ではありません。
 
-- 入出庫履歴（`stock_movements`テーブルは既に作成済み）の閲覧画面
-- チーム/店舗単位でのデータ分離（`team_id`列の追加）
-- 在庫数のしきい値を下回ったときの通知
+## 今後の拡張
 
-> staging環境デプロイ確認用の追記(2026-08-23)
+候補は [仕様書の5章](docs/spec.md) と、GitHubのIssueで管理しています。
