@@ -155,7 +155,6 @@ function App() {
         {CHAT_ENABLED && tab === TABS.CHAT && <ChatPanel />}
       </main>
 
-      <footer className="app-footer">CI/CD動作確認 v1</footer>
     </div>
   )
 }

@@ -28,6 +28,8 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
   const [manualBarcode, setManualBarcode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAdjusting, setIsAdjusting] = useState(false)
+  const [prevQuantity, setPrevQuantity] = useState(0) // スキャン前の在庫数(「○→○」の表示用)
+  const [undone, setUndone] = useState(false)
   const [aiNote, setAiNote] = useState('')
   const aiRequestId = useRef(0) // 古い提案が、次の商品の入力欄に入らないようにする
 
@@ -44,9 +46,11 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
     try {
       const found = await findByBarcode(code)
       if (found) {
-        // スキャンした時点で自動的に+1(入庫)する。以降の微調整は手動の＋/−ボタンで行う。
+        // スキャンした時点で自動的に+1(入庫)する。間違えたときは「取り消す」で1回だけ戻せる。
         const newQty = await adjustQuantity(found.id, 1, '入庫')
         setExisting({ ...found, quantity: newQty })
+        setPrevQuantity(found.quantity)
+        setUndone(false)
         setStatus('existing')
         onChanged?.()
       } else {
@@ -145,16 +149,17 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
     }
   }
 
-  const handleAdjust = async (change) => {
-    if (isAdjusting) return
-    if (change < 0 && existing.quantity <= 0) return
+  // 直前のスキャンによる入庫(+1)を取り消す。二重に押して在庫が狂わないよう、1回だけ。
+  const handleUndo = async () => {
+    if (isAdjusting || undone) return
     setIsAdjusting(true)
     try {
-      const newQty = await adjustQuantity(existing.id, change, change > 0 ? '入庫' : '出庫')
+      const newQty = await adjustQuantity(existing.id, -1, '入庫の取り消し')
       setExisting({ ...existing, quantity: newQty })
+      setUndone(true)
       onChanged?.()
     } catch (err) {
-      setMessage('更新エラー: ' + err.message)
+      setMessage('取り消せませんでした。もう一度お試しください')
     } finally {
       setIsAdjusting(false)
     }
@@ -206,18 +211,21 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
           <p className="scan-result__barcode">バーコード: {existing.barcode}</p>
           <h3>{existing.name}</h3>
           {existing.category && <p className="scan-result__category">カテゴリ: {existing.category}</p>}
-          <p>現在の在庫数: {existing.quantity}（スキャンにより+1済み）</p>
-          <p>数量を修正する場合はこちら</p>
-          <div className="qty-buttons">
-            <button onClick={() => handleAdjust(1)} disabled={isAdjusting}>
-              ＋1（入庫）
-            </button>
-            <button onClick={() => handleAdjust(-1)} disabled={isAdjusting || existing.quantity <= 0}>
-              −1（出庫）
-            </button>
-          </div>
+          {undone ? (
+            <p className="scan-result__done">↩ 取り消しました。在庫は {existing.quantity} 個に戻りました</p>
+          ) : (
+            <>
+              <p className="scan-result__done">
+                ✅ 入庫を1件記録しました（在庫 {prevQuantity} → {existing.quantity} 個）
+              </p>
+              <p className="scan-result__category">同じ商品をもう1個入荷したら、もう一度スキャンしてください</p>
+              <button className="secondary" onClick={handleUndo} disabled={isAdjusting}>
+                ↩ 間違えた（取り消す）
+              </button>
+            </>
+          )}
           <button className="secondary" onClick={resetForm}>
-            次のバーコードをスキャン
+            次の商品をスキャン
           </button>
         </div>
       )}
