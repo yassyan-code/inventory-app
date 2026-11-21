@@ -48,7 +48,11 @@ export default function CameraScanner({ onDetected, active }) {
         // NotFoundExceptionはフレームごとに発生するので無視してよい
       })
       .catch((err) => {
-        setError('カメラを起動できませんでした: ' + err.message)
+        setError(
+          err?.name === 'NotAllowedError'
+            ? 'カメラが許可されていません。ブラウザのアドレス欄の鍵マークからカメラを許可して再読み込みするか、下の欄にバーコード番号を入力してください'
+            : 'カメラを起動できませんでした。下の欄にバーコード番号を入力しても登録できます（' + err.message + '）',
+        )
       })
 
     return () => {
