@@ -333,7 +333,9 @@ button.link {
   color: var(--muted);
 }
 
-main {
+main,
+.register-panel,
+.inventory-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
