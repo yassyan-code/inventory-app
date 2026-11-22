@@ -1,6 +1,23 @@
 :root {
+  /* 色は「文字・背景」+「アクセント青1色」+「状態の赤/緑」だけ。ここ以外に色を直書きしない */
   --text: #1f2937;
   --bg: #ffffff;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface: #f9fafb;
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
+  --danger: #dc2626;
+  --success: #15803d;
+
+  /* 余白は4段階だけ */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --radius: 8px;
+  --tap: 44px; /* 指で押せる最小の高さ */
+
   --sans: system-ui, 'Segoe UI', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif;
 
   font: 16px/145% var(--sans);
@@ -17,6 +34,13 @@
   :root {
     --text: #e5e7eb;
     --bg: #16171d;
+    --muted: #c0c6d0; /* 暗い背景で小さい文字が読めるよう明るめ */
+    --border: #374151;
+    --surface: #1f2937;
+    --accent: #3b82f6;
+    --accent-soft: #1e3a8a;
+    --danger: #f87171;
+    --success: #4ade80;
   }
 }
 
