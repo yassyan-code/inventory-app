@@ -158,7 +158,7 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
       setExisting({ ...existing, quantity: newQty })
       setUndone(true)
       onChanged?.()
-    } catch (err) {
+    } catch {
       setMessage('取り消せませんでした。もう一度お試しください')
     } finally {
       setIsAdjusting(false)

@@ -247,11 +247,11 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
           <tbody>
             {items.map((item) => (
               <tr key={item.id} className={item.archivedAt ? 'row--archived' : ''}>
-                <td>
+                <td data-label="商品名">
                   {item.name}
                   {item.archivedAt && <span className="archived-badge">非表示</span>}
                 </td>
-                <td className="category-cell">
+                <td className="category-cell" data-label="カテゴリ">
                   {editingId === item.id ? (
                     <input
                       className="category-edit-input"
@@ -274,19 +274,21 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
                     <span>{item.category || '－'}</span>
                   )}
                 </td>
-                <td className="barcode-cell">{item.barcode}</td>
-                <td className="barcode-cell">{formatDate(item.createdAt)}</td>
-                <td>{item.quantity}</td>
-                <td className="qty-buttons qty-buttons--inline">
-                  <button onClick={() => handleAdjust(item, 1)} disabled={adjustingId === item.id}>
-                    ＋1
-                  </button>
-                  <button
-                    onClick={() => handleAdjust(item, -1)}
-                    disabled={adjustingId === item.id || item.quantity <= 0}
-                  >
-                    −1
-                  </button>
+                <td className="barcode-cell" data-label="バーコード">{item.barcode}</td>
+                <td className="barcode-cell" data-label="登録日">{formatDate(item.createdAt)}</td>
+                <td data-label="数量">{item.quantity}</td>
+                <td>
+                  <div className="qty-buttons qty-buttons--inline">
+                    <button onClick={() => handleAdjust(item, 1)} disabled={adjustingId === item.id}>
+                      ＋1
+                    </button>
+                    <button
+                      onClick={() => handleAdjust(item, -1)}
+                      disabled={adjustingId === item.id || item.quantity <= 0}
+                    >
+                      −1
+                    </button>
+                  </div>
                 </td>
                 <td>
                   {!isAdmin ? null : item.archivedAt ? (

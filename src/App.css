@@ -1,8 +1,38 @@
+/* 見た目のルール(第91課題): 色は index.css の変数だけ / 余白は --space-* / 押せる高さは --tap */
+
 /* ダークモードでも入力欄・セレクトは常に明るい背景+暗い文字にして視認性を確保する */
 input,
 select {
   color: #1f2937;
   background: white;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  min-height: var(--tap);
+}
+
+input[type='checkbox'] {
+  min-height: auto;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+input:not([type='checkbox']),
+select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem; /* 16px未満だとスマホで入力時に画面が拡大される */
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .app-loading {
@@ -13,12 +43,14 @@ select {
 }
 
 .app-shell {
-  max-width: 640px;
+  width: 100%;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: var(--space-3);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
 }
 
 .app-shell--centered {
@@ -31,162 +63,101 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  gap: var(--space-2);
 }
 
 .app-header h1 {
+  margin: 0;
   font-size: 1.25rem;
+}
+
+.app-header button,
+.app-subtitle {
+  white-space: nowrap; /* 実機で「ログアウト」「for Team」が折れて崩れたため */
 }
 
 .app-subtitle {
   font-size: 0.75rem;
   font-weight: normal;
-  opacity: 0.7;
+  color: var(--muted);
 }
 
-.tabs {
+.app-header__title {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.app-team-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.app-team-name {
+  font-weight: 600;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.role-badge--admin {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.tabs,
+.mode-switch,
+.sort-buttons {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .tabs button,
-.mode-switch button {
+.mode-switch button,
+.sort-buttons button {
   flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #f9fafb;
-  color: #1f2937;
-  font-size: 1rem;
-  cursor: pointer;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .tabs button.active,
-.mode-switch button.active {
-  background: #1f2937;
+.mode-switch button.active,
+.sort-buttons button.active {
+  background: var(--accent);
+  border-color: var(--accent);
   color: white;
-  border-color: #1f2937;
 }
 
-.mode-switch {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.camera-scanner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.camera-scanner__video {
-  width: 100%;
-  max-width: 400px;
-  border-radius: 8px;
-  background: #000;
-}
-
-.camera-scanner__hint {
-  color: #6b7280;
+.sort-buttons button {
   font-size: 0.9rem;
-}
-
-.camera-scanner__error {
-  color: #dc2626;
-}
-
-.hardware-scanner {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.hardware-scanner input {
-  padding: 1rem;
-  font-size: 1.1rem;
-  border: 2px dashed #9ca3af;
-  border-radius: 8px;
-}
-
-.manual-entry {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.manual-entry label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: #6b7280;
-}
-
-.manual-entry input {
-  padding: 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-  color: initial;
-}
-
-.scan-result {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.scan-result__barcode {
-  color: #6b7280;
-  font-size: 0.85rem;
-}
-
-.scan-result label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.9rem;
-}
-
-.scan-result input {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-}
-
-.qty-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.qty-buttons--inline {
-  justify-content: flex-end;
 }
 
 button {
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
-  border: 1px solid #1f2937;
-  background: #1f2937;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: white;
   cursor: pointer;
 }
 
 button.secondary {
-  background: white;
-  color: #1f2937;
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 button:disabled {
@@ -194,138 +165,178 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.message {
-  color: #dc2626;
-}
-
-/* 情報メッセージ（成功・案内）は落ち着いた色に。エラーだけ赤。 */
-.auth-form .message {
-  color: #15803d;
-}
-
-.auth-form .message--error {
-  color: #dc2626;
-}
-
-.auth-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: center;
-}
-
 button.link {
   background: none;
   border: none;
   padding: 0;
-  color: #2563eb;
-  font-size: 0.85rem;
+  min-height: var(--tap);
+  color: var(--accent);
+  font-size: 0.9rem;
   text-decoration: underline;
-  cursor: pointer;
   width: auto;
 }
 
-.app-header__title {
+.camera-scanner {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-}
-
-.app-team-line {
-  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  font-size: 0.8rem;
+  gap: var(--space-2);
 }
 
-.app-team-name {
-  font-weight: 600;
-  opacity: 0.85;
-}
-
-.role-badge {
-  display: inline-block;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.role-badge--admin {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.camera-scanner__video {
   width: 100%;
-  max-width: 320px;
+  max-width: 400px;
+  border-radius: var(--radius);
+  background: #000;
 }
 
-.auth-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  text-align: left;
+.camera-scanner__hint {
+  margin: 0;
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
-.auth-form input {
-  padding: 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
+.camera-scanner__error,
+.message {
+  color: var(--danger);
 }
 
-.search-bar {
+.hardware-scanner {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.search-bar input {
-  flex: 1;
-  padding: 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+.hardware-scanner input {
+  padding: var(--space-3);
+  font-size: 1.1rem;
+  border: 2px dashed var(--muted);
 }
 
-.category-filter {
-  width: 100%;
-  padding: 0.6rem;
-  margin-bottom: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
-  background: white;
-  color: initial;
+.manual-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 
+.manual-entry label,
+.scan-result label,
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+}
+
+.manual-entry label {
+  color: var(--muted);
+}
+
+.auth-form label {
+  text-align: left;
+}
+
+.scan-result {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.scan-result h3,
+.scan-result p {
+  margin: 0;
+}
+
+.scan-result__barcode,
 .scan-result__category {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.85rem;
 }
 
 .scan-result__done {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #166534;
+  color: var(--success);
 }
 
-.sort-buttons {
+.qty-buttons {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: var(--space-2);
 }
 
-.sort-buttons button {
+.qty-buttons--inline {
+  justify-content: flex-end;
+}
+
+/* 情報メッセージ（成功・案内）は落ち着いた色に。エラーだけ赤。 */
+.auth-form .message {
+  color: var(--success);
+}
+
+.auth-form .message--error {
+  color: var(--danger);
+}
+
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 360px;
+}
+
+.auth-form form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.search-bar {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.search-bar input {
   flex: 1;
-  padding: 0.5rem;
+  min-width: 0;
+}
+
+.category-filter {
+  width: 100%;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.show-archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: 0.85rem;
+  color: var(--muted);
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
 table {
@@ -336,44 +347,34 @@ table {
 th,
 td {
   text-align: left;
-  padding: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .barcode-cell {
-  color: #6b7280;
-  font-size: 0.8rem;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .category-edit-trigger {
   background-color: transparent;
   border: 1px dashed transparent;
   padding: 0.15rem 0.4rem;
+  min-height: auto;
   border-radius: 4px;
   font-size: 0.9rem;
   color: inherit;
-  cursor: pointer;
 }
 
 .category-edit-trigger:hover {
-  border-color: #9ca3af;
-}
-
-.list-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.show-archived-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: #6b7280;
+  border-color: var(--muted);
 }
 
 .row--archived {
@@ -381,88 +382,157 @@ td {
 }
 
 .archived-badge {
-  margin-left: 0.4rem;
+  margin-left: var(--space-2);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface);
+  color: var(--muted);
   font-size: 0.7rem;
 }
 
 .category-edit-input {
   width: 100%;
   min-width: 6rem;
-  padding: 0.3rem;
-  border: 1px solid #6b7280;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background: white;
-  color: initial;
 }
 
+/* ---- スマホ: 表を「1商品=1枚のカード」に組み替える(横スクロールをなくす) ---- */
+@media (max-width: 640px) {
+  .app-shell {
+    padding: var(--space-3) 0.75rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.1rem;
+  }
+
+  table,
+  tbody {
+    display: block;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody tr {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  td {
+    padding: 0;
+    border: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  td:empty {
+    display: none;
+  }
+
+  /* 商品名は1行目に大きく */
+  td:nth-child(1) {
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.875rem;
+    font-weight: 400;
+  }
+
+  td:nth-child(1)::before {
+    content: none;
+  }
+
+  /* 数量は大きく */
+  td:nth-child(5) {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  /* 操作ボタンは横いっぱいに並べる */
+  td .qty-buttons {
+    width: 100%;
+  }
+
+  td .qty-buttons button,
+  td:last-child button {
+    flex: 1;
+  }
+
+  .list-toolbar button {
+    width: 100%;
+  }
+}
+
+/* ---- チャット(現在は非表示) ---- */
 .chat-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .chat-messages {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   min-height: 200px;
 }
 
 .chat-empty {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
 .chat-bubble {
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 0.6rem 0.75rem;
   max-width: 85%;
 }
 
 .chat-bubble p {
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   white-space: pre-wrap;
 }
 
 .chat-bubble__label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--muted);
 }
 
 .chat-bubble--user {
   align-self: flex-end;
-  background: #1f2937;
+  background: var(--accent);
   color: white;
 }
 
 .chat-bubble--user .chat-bubble__label {
-  color: #d1d5db;
+  color: #dbeafe;
 }
 
 .chat-bubble--assistant {
   align-self: flex-start;
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.chat-bubble--assistant .chat-bubble__label {
-  color: #6b7280;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .chat-input {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .chat-input input {
   flex: 1;
-  padding: 0.6rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 1rem;
+  min-width: 0;
 }
