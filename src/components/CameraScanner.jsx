@@ -66,8 +66,18 @@ export default function CameraScanner({ onDetected, active }) {
 
   return (
     <div className="camera-scanner">
-      <video ref={videoRef} className="camera-scanner__video" muted playsInline />
-      {error && <p className="camera-scanner__error">{error}</p>}
+      <video
+        ref={videoRef}
+        className="camera-scanner__video"
+        muted
+        playsInline
+        aria-label="バーコードを読み取るカメラの映像"
+      />
+      {error && (
+        <p className="camera-scanner__error" role="alert">
+          {error}
+        </p>
+      )}
       <p className="camera-scanner__hint">
         バーコードを画面の横幅いっぱいくらいに大きく、正面から、明るい場所で映してください
       </p>

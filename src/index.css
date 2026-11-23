@@ -6,6 +6,7 @@
   --border: #e5e7eb;
   --surface: #f9fafb;
   --accent: #2563eb;
+  --accent-strong: #2563eb; /* 白い文字を載せる塗りつぶし用(白との比 5.2) */
   --accent-soft: #dbeafe;
   --danger: #dc2626;
   --success: #15803d;
@@ -37,7 +38,7 @@
     --muted: #c0c6d0; /* 暗い背景で小さい文字が読めるよう明るめ */
     --border: #374151;
     --surface: #1f2937;
-    --accent: #3b82f6;
+    --accent: #3b82f6; /* 暗い背景の上の文字・枠用 */
     --accent-soft: #1e3a8a;
     --danger: #f87171;
     --success: #4ade80;

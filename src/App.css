@@ -113,7 +113,7 @@ select:focus-visible {
 
 .role-badge--admin {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--text);
   border-color: transparent;
 }
 
@@ -136,9 +136,10 @@ select:focus-visible {
 .tabs button.active,
 .mode-switch button.active,
 .sort-buttons button.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
   color: white;
+  font-weight: 700; /* 色だけに頼らず、太字でも「選択中」が分かるように */
 }
 
 .sort-buttons button {
@@ -148,8 +149,8 @@ select:focus-visible {
 button {
   padding: 0.5rem 1rem;
   border-radius: var(--radius);
-  border: 1px solid var(--accent);
-  background: var(--accent);
+  border: 1px solid var(--accent-strong);
+  background: var(--accent-strong);
   color: white;
   cursor: pointer;
 }
@@ -379,8 +380,8 @@ th {
   border-color: var(--muted);
 }
 
-.row--archived {
-  opacity: 0.6;
+.row--archived td {
+  color: var(--muted); /* 半透明にすると薄すぎて読めないため、色で控えめにする */
 }
 
 .archived-badge {
@@ -515,7 +516,7 @@ th {
 
 .chat-bubble--user {
   align-self: flex-end;
-  background: var(--accent);
+  background: var(--accent-strong);
   color: white;
 }
 
