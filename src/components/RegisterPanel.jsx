@@ -170,12 +170,14 @@ export default function RegisterPanel({ onChanged, isAdmin = false }) {
       <div className="mode-switch">
         <button
           className={mode === MODES.CAMERA ? 'active' : ''}
+          aria-pressed={mode === MODES.CAMERA}
           onClick={() => setMode(MODES.CAMERA)}
         >
           📷 カメラで読み取る
         </button>
         <button
           className={mode === MODES.HARDWARE ? 'active' : ''}
+          aria-pressed={mode === MODES.HARDWARE}
           onClick={() => setMode(MODES.HARDWARE)}
         >
           🔌 スキャナーで読み取る

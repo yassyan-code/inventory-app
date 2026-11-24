@@ -162,6 +162,7 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
       <form className="search-bar" onSubmit={handleSearchSubmit}>
         <input
           value={search}
+          aria-label="商品を検索"
           onChange={handleSearchChange}
           placeholder="商品名・バーコード・カテゴリで検索"
         />
@@ -170,6 +171,7 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
 
       <select
         className="category-filter"
+        aria-label="カテゴリで絞り込む"
         value={category}
         onChange={(e) => setCategory(e.target.value)}
       >
@@ -184,18 +186,21 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
       <div className="sort-buttons">
         <button
           className={sortOrder === 'name' ? 'active' : 'secondary'}
+          aria-pressed={sortOrder === 'name'}
           onClick={() => setSortOrder('name')}
         >
           名前順
         </button>
         <button
           className={sortOrder === 'newest' ? 'active' : 'secondary'}
+          aria-pressed={sortOrder === 'newest'}
           onClick={() => setSortOrder('newest')}
         >
           新しい順
         </button>
         <button
           className={sortOrder === 'oldest' ? 'active' : 'secondary'}
+          aria-pressed={sortOrder === 'oldest'}
           onClick={() => setSortOrder('oldest')}
         >
           古い順
@@ -227,7 +232,11 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
       </div>
 
       {loading && <p>読み込み中...</p>}
-      {error && <p className="message">{error}</p>}
+      {error && (
+        <p className="message" role="alert">
+          {error}
+        </p>
+      )}
 
       {!loading && items.length === 0 && <p>登録された商品がありません。</p>}
 
@@ -279,11 +288,16 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
                 <td data-label="数量">{item.quantity}</td>
                 <td>
                   <div className="qty-buttons qty-buttons--inline">
-                    <button onClick={() => handleAdjust(item, 1)} disabled={adjustingId === item.id}>
+                    <button
+                      onClick={() => handleAdjust(item, 1)}
+                      disabled={adjustingId === item.id}
+                      aria-label={`${item.name} の在庫を1個増やす`}
+                    >
                       ＋1
                     </button>
                     <button
                       onClick={() => handleAdjust(item, -1)}
+                      aria-label={`${item.name} の在庫を1個減らす`}
                       disabled={adjustingId === item.id || item.quantity <= 0}
                     >
                       −1
@@ -292,11 +306,19 @@ export default function InventoryList({ refreshKey, isAdmin = false }) {
                 </td>
                 <td>
                   {!isAdmin ? null : item.archivedAt ? (
-                    <button className="secondary" onClick={() => handleUnarchive(item)}>
+                    <button
+                      className="secondary"
+                      onClick={() => handleUnarchive(item)}
+                      aria-label={`${item.name} を一覧に戻す`}
+                    >
                       復元
                     </button>
                   ) : (
-                    <button className="secondary" onClick={() => handleArchive(item)}>
+                    <button
+                      className="secondary"
+                      onClick={() => handleArchive(item)}
+                      aria-label={`${item.name} を非表示にする`}
+                    >
                       非表示
                     </button>
                   )}

@@ -124,15 +124,17 @@ function App() {
         </button>
       </header>
 
-      <nav className="tabs">
+      <nav className="tabs" aria-label="画面の切り替え">
         <button
           className={tab === TABS.SCAN ? 'active' : ''}
+          aria-current={tab === TABS.SCAN ? 'page' : undefined}
           onClick={() => setTab(TABS.SCAN)}
         >
           スキャン登録
         </button>
         <button
           className={tab === TABS.LIST ? 'active' : ''}
+          aria-current={tab === TABS.LIST ? 'page' : undefined}
           onClick={() => setTab(TABS.LIST)}
         >
           在庫一覧
